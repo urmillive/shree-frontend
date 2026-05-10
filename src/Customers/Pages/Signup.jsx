@@ -338,7 +338,9 @@ const Signup = () => {
 
   const pageWrapperSx = {
     ...signupKeyframes,
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     py: { xs: 2.5, md: 5 },
@@ -433,7 +435,7 @@ const Signup = () => {
             alignItems: "center",
             gap: { xs: 3, md: 5 },
             gridTemplateColumns: { xs: "1fr", md: "1.05fr 0.95fr" },
-            minHeight: { md: "min(640px, calc(100vh - 80px))" },
+            minHeight: { md: "min(640px, calc(100dvh - 220px))" },
           }}
         >
           <Fade in timeout={700}>

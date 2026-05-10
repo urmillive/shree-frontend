@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
-import { createAdminCategory, fetchAdminCategories, flattenCategories } from "../services/adminCategoriesService";
+import { createAdminCategory, fetchAdminCategories, flattenCategories, uploadAdminCategoryImageFromFile } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
@@ -29,6 +29,8 @@ const AdminCategoryCreate = () => {
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [categoriesFlat, setCategoriesFlat] = useState([]);
+  const [categoryImageFile, setCategoryImageFile] = useState(null);
+  const categoryImageInputRef = useRef(null);
 
   const loadParentOptions = async () => {
     try {
@@ -43,6 +45,23 @@ const AdminCategoryCreate = () => {
     if (isAdminAllowed) loadParentOptions();
   }, [isAdminAllowed]);
 
+  const clearCategoryImage = () => {
+    setCategoryImageFile(null);
+    if (categoryImageInputRef.current) {
+      categoryImageInputRef.current.value = "";
+    }
+  };
+
+  const onPickCategoryImage = (event) => {
+    const file = Array.from(event.target.files || []).find((f) => f && String(f.type || "").startsWith("image/"));
+    if (!file) return;
+    setCategoryImageFile(file);
+    setFeedback({ type: "", message: "" });
+    if (categoryImageInputRef.current) {
+      categoryImageInputRef.current.value = "";
+    }
+  };
+
   const handleCreateCategory = async (event) => {
     event.preventDefault();
     if (!createForm.name.trim()) {
@@ -51,6 +70,7 @@ const AdminCategoryCreate = () => {
     }
     setCreating(true);
     setFeedback({ type: "", message: "" });
+    const imageSnapshot = categoryImageFile;
     try {
       const payload = {
         name: createForm.name.trim(),
@@ -69,6 +89,20 @@ const AdminCategoryCreate = () => {
       const { data } = await createAdminCategory(payload);
       const created = data?.data?.category ?? data?.category ?? data?.data ?? data;
       const id = getCategoryId(created);
+      if (id && imageSnapshot) {
+        try {
+          await uploadAdminCategoryImageFromFile(id, imageSnapshot);
+          clearCategoryImage();
+        } catch (imgErr) {
+          const msg = imgErr?.response?.data?.message || imgErr?.message || "Image upload failed.";
+          navigate(`/admin/categories/${encodeURIComponent(id)}`, {
+            state: {
+              imageUploadNotice: `Category was created, but the image could not be uploaded: ${msg} You can try again below.`,
+            },
+          });
+          return;
+        }
+      }
       if (id) {
         navigate(`/admin/categories/${encodeURIComponent(id)}`);
       } else {
@@ -113,7 +147,7 @@ const AdminCategoryCreate = () => {
         </Stack>
 
         {feedback.message ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <Alert severity={feedback.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
             {feedback.message}
           </Alert>
         ) : null}
@@ -140,8 +174,32 @@ const AdminCategoryCreate = () => {
             </TextField>
             <TextField label="SEO Meta Title" size="small" value={createForm.metaTitle} onChange={(event) => setCreateForm((prev) => ({ ...prev, metaTitle: event.target.value }))} />
             <TextField label="SEO Meta Description" size="small" value={createForm.metaDescription} onChange={(event) => setCreateForm((prev) => ({ ...prev, metaDescription: event.target.value }))} />
+            <Stack spacing={0.75}>
+              <Typography variant="body2" sx={{ color: "#4e5a54", fontWeight: 700 }}>
+                Category image (optional)
+              </Typography>
+              <Typography variant="caption" sx={{ color: "#4e5a54" }}>
+                After the category is created, the image uploads automatically (same presigned upload + confirm as products).
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }}>
+                <Button variant="outlined" component="label" sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }}>
+                  Choose image
+                  <input ref={categoryImageInputRef} hidden type="file" accept="image/*" onChange={onPickCategoryImage} />
+                </Button>
+                {categoryImageFile ? (
+                  <Button variant="text" onClick={clearCategoryImage} sx={{ textTransform: "none", fontWeight: 700 }}>
+                    Clear
+                  </Button>
+                ) : null}
+              </Stack>
+              {categoryImageFile ? (
+                <Typography variant="caption" sx={{ color: "#4e5a54", wordBreak: "break-all" }}>
+                  Selected: {categoryImageFile.name}
+                </Typography>
+              ) : null}
+            </Stack>
             <Button type="submit" variant="contained" disabled={creating} sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}>
-              {creating ? "Creating..." : "Create Category"}
+              {creating ? (categoryImageFile ? "Creating & uploading image..." : "Creating...") : "Create Category"}
             </Button>
           </Stack>
         </Paper>

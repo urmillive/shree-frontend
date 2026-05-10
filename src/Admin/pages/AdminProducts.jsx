@@ -31,9 +31,9 @@ const pageBg = "#ffffff";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All status" },
-  { value: "draft", label: "draft" },
-  { value: "published", label: "published" },
-  { value: "archived", label: "archived" },
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
 ];
 
 function formatDateTime(value) {
@@ -320,7 +320,19 @@ const AdminProducts = () => {
                 </TableRow>
               ) : (
                 rows.map((row) => (
-                  <TableRow key={pickProductId(row) || JSON.stringify(row)} hover>
+                  <TableRow
+                    key={pickProductId(row) || JSON.stringify(row)}
+                    hover
+                    onClick={() => {
+                      const id = pickProductId(row);
+                      if (id) navigate(`/admin/products/${encodeURIComponent(String(id))}`);
+                    }}
+                    sx={{
+                      cursor: pickProductId(row) ? "pointer" : "default",
+                      "&:focus-visible": { outline: `2px solid ${accent}`, outlineOffset: -2 },
+                    }}
+                    tabIndex={pickProductId(row) ? 0 : -1}
+                  >
                     {columns.map((column) => (
                       <TableCell key={column} sx={{ color: "#1f2a24" }}>
                         {column === "updatedAt" || column === "createdAt"

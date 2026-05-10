@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -25,6 +25,7 @@ import client, {
   setStoredUserDisplayName,
 } from "../../Setup/Axios";
 import { colors, primaryAlpha } from "../../theme/theme";
+import { mergeGuestCart } from "../services/publicCartService";
 
 const authLayout = {
   card: {
@@ -114,6 +115,11 @@ const motionSafe = (active, reduced) => ({
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTo =
+    location.state?.from?.pathname && typeof location.state.from.pathname === "string"
+      ? location.state.from.pathname
+      : "/profile";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -178,6 +184,11 @@ const Login = () => {
         setStoredAdminToken(accessToken);
       } else {
         setStoredAccessToken(accessToken);
+        try {
+          await mergeGuestCart();
+        } catch {
+          // Keep login successful even if merge fails.
+        }
       }
 
       setSuccessMessage("Login successful.");
@@ -188,7 +199,7 @@ const Login = () => {
           return;
         }
 
-        navigate("/profile");
+        navigate(redirectTo, { replace: true });
       }, 800);
     } catch (error) {
       setErrors({
@@ -210,7 +221,9 @@ const Login = () => {
 
   const pageWrapperSx = {
     ...loginKeyframes,
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     py: { xs: 2.5, md: 5 },
@@ -301,7 +314,7 @@ const Login = () => {
             alignItems: "center",
             gap: { xs: 3, md: 5 },
             gridTemplateColumns: { xs: "1fr", md: "1.05fr 0.95fr" },
-            minHeight: { md: "min(640px, calc(100vh - 80px))" },
+            minHeight: { md: "min(640px, calc(100dvh - 220px))" },
           }}
         >
           <Fade in timeout={700}>

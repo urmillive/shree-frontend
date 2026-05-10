@@ -40,7 +40,18 @@ const ProtectedRoute = ({ allowedRoles = null }) => {
 
   if (status === "checking") {
     return (
-      <Box sx={{ bgcolor: colors.background, color: colors.text, minHeight: "100vh", p: 2 }}>
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: colors.background,
+          color: colors.text,
+          p: 2,
+          minHeight: 200,
+        }}
+      >
         Checking session...
       </Box>
     );

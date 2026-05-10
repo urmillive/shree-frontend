@@ -117,7 +117,9 @@ const ChangePassword = () => {
 
   const pageWrapperSx = {
     ...signupKeyframes,
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     py: { xs: 2.5, md: 5 },

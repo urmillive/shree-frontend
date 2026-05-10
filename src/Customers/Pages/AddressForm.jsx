@@ -11,7 +11,9 @@ const normalizePincode = (value) => String(value ?? "").replace(/\D/g, "").slice
 
 const pageStyles = {
   page: {
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     background: colors.background,
     display: "flex",
     justifyContent: "center",

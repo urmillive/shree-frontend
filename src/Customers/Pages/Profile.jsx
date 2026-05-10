@@ -1,12 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMenu, FiCheck, FiX } from "react-icons/fi";
+import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMenu, FiPackage, FiCheck, FiX } from "react-icons/fi";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
 import { colors, primaryAlpha, blackAlpha, whiteAlpha } from "../../theme/theme";
 
 const profilePageStyles = {
   page: {
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     background: colors.background,
     display: "flex",
     justifyContent: "center",
@@ -660,6 +662,22 @@ const Profile = () => {
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
                 <button
                   type="button"
+                  onClick={() => navigate("/orders")}
+                  disabled={loggingOut}
+                  style={{
+                    ...profilePageStyles.heroButton,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    cursor: loggingOut ? "not-allowed" : "pointer",
+                    opacity: loggingOut ? 0.65 : 1,
+                  }}
+                >
+                  <FiPackage size={18} aria-hidden />
+                  Orders
+                </button>
+                <button
+                  type="button"
                   onClick={() => navigate(hasAddresses ? "/profile/addresses" : "/profile/addresses/new")}
                   disabled={loggingOut}
                   style={{
@@ -710,6 +728,23 @@ const Profile = () => {
                       Edit
                     </button>
                    
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        navigate("/orders");
+                      }}
+                      disabled={loggingOut}
+                      style={{
+                        ...profilePageStyles.menuItem,
+                        cursor: loggingOut ? "not-allowed" : "pointer",
+                        opacity: loggingOut ? 0.65 : 1,
+                      }}
+                    >
+                      <FiPackage size={18} aria-hidden />
+                      My orders
+                    </button>
                     <button
                       type="button"
                       role="menuitem"

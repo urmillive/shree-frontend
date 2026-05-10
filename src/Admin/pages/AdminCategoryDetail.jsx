@@ -1,16 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
 import {
-  confirmAdminCategoryImage,
   deleteAdminCategory,
   fetchAdminCategoryById,
-  getAdminCategoryUploadUrl,
   normalizeCategoryPayload,
   toggleAdminCategoryStatus,
+  uploadAdminCategoryImageFromFile,
 } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
@@ -20,17 +19,17 @@ const getCategoryId = (category) => String(category?._id || category?.id || cate
 
 const AdminCategoryDetail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { categoryId = "" } = useParams();
   const roleGate = localStorage.getItem("role");
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
+  const imageInputRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [category, setCategory] = useState(null);
-  const [uploadForm, setUploadForm] = useState({ contentType: "image/jpeg", fileName: "" });
-  const [uploadData, setUploadData] = useState({ uploadUrl: "", key: "" });
-  const [confirmKey, setConfirmKey] = useState("");
-  const [busy, setBusy] = useState({ toggle: false, generate: false, confirm: false, remove: false });
+  const [pickedFile, setPickedFile] = useState(null);
+  const [busy, setBusy] = useState({ toggle: false, upload: false, remove: false });
 
   const withBusy = async (key, fn) => {
     setBusy((prev) => ({ ...prev, [key]: true }));
@@ -50,7 +49,6 @@ const AdminCategoryDetail = () => {
       const { data: categoryData } = await fetchAdminCategoryById(categoryId.trim());
       const fetched = normalizeCategoryPayload(categoryData);
       setCategory(fetched);
-      setConfirmKey(fetched?.imageKey || fetched?.image?.key || "");
     } catch (error) {
       setFeedback({
         type: "error",
@@ -67,6 +65,13 @@ const AdminCategoryDetail = () => {
     }
   }, [isAdminAllowed, categoryId]);
 
+  useEffect(() => {
+    const notice = location.state?.imageUploadNotice;
+    if (!notice || !categoryId.trim()) return;
+    setFeedback({ type: "error", message: String(notice) });
+    navigate(`/admin/categories/${encodeURIComponent(categoryId.trim())}`, { replace: true, state: {} });
+  }, [categoryId, location.state, navigate]);
+
   const handleToggleStatus = async () => {
     await withBusy("toggle", async () => {
       try {
@@ -82,47 +87,42 @@ const AdminCategoryDetail = () => {
     });
   };
 
-  const handleGenerateUploadUrl = async () => {
-    const fileName = uploadForm.fileName.trim();
-    if (!fileName) {
-      setFeedback({ type: "error", message: "File name is required for upload URL generation." });
-      return;
+  const onPickImage = (event) => {
+    const file = Array.from(event.target.files || []).find((f) => f && String(f.type || "").startsWith("image/"));
+    if (!file) return;
+    setPickedFile(file);
+    setFeedback({ type: "", message: "" });
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
     }
-    await withBusy("generate", async () => {
-      try {
-        const { data } = await getAdminCategoryUploadUrl(categoryId.trim(), {
-          contentType: uploadForm.contentType.trim() || "image/jpeg",
-          fileName,
-        });
-        const payload = data?.data ?? data;
-        const uploadUrl = payload?.uploadUrl || "";
-        const key = payload?.key || "";
-        setUploadData({ uploadUrl, key });
-        if (key) setConfirmKey(key);
-        setFeedback({ type: "success", message: "Upload URL generated. Upload your file to S3, then confirm key." });
-      } catch (error) {
-        setFeedback({
-          type: "error",
-          message: error?.response?.data?.message || error?.message || "Failed to generate upload URL.",
-        });
-      }
-    });
   };
 
-  const handleConfirmImage = async () => {
-    if (!confirmKey.trim()) {
-      setFeedback({ type: "error", message: "Provide the S3 key before confirmation." });
+  const clearPickedFile = () => {
+    setPickedFile(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
+
+  const handleUploadAndConfirm = async () => {
+    if (!pickedFile) {
+      setFeedback({ type: "error", message: "Choose an image file first." });
       return;
     }
-    await withBusy("confirm", async () => {
+    await withBusy("upload", async () => {
       try {
-        await confirmAdminCategoryImage(categoryId.trim(), { key: confirmKey.trim() });
-        setFeedback({ type: "success", message: "Image confirmed successfully." });
-        await loadCategory();
+        const updated = await uploadAdminCategoryImageFromFile(categoryId.trim(), pickedFile);
+        if (updated) {
+          setCategory(updated);
+        } else {
+          await loadCategory();
+        }
+        clearPickedFile();
+        setFeedback({ type: "success", message: "Image uploaded and confirmed." });
       } catch (error) {
         setFeedback({
           type: "error",
-          message: error?.response?.data?.message || error?.message || "Failed to confirm image.",
+          message: error?.response?.data?.message || error?.message || "Image upload or confirm failed.",
         });
       }
     });
@@ -218,23 +218,44 @@ const AdminCategoryDetail = () => {
 
             <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
               <Stack spacing={1.25}>
-                <Typography sx={{ fontWeight: 700, color: "#1f2a24" }}>Category Image (S3 Presigned Flow)</Typography>
+                <Typography sx={{ fontWeight: 700, color: "#1f2a24" }}>Category image</Typography>
                 <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                  Current image key: {imageKey || "-"}
+                  Pick an image, then upload. The app requests a presigned URL, uploads your file, then confirms with the server (same flow as product images).
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                  Current image URL: {imageUrl || "-"}
+                  Current key: {imageKey || "—"}
                 </Typography>
-                <TextField label="Content Type" size="small" value={uploadForm.contentType} onChange={(event) => setUploadForm((prev) => ({ ...prev, contentType: event.target.value }))} />
-                <TextField label="File Name" size="small" placeholder="men-banner.jpg" value={uploadForm.fileName} onChange={(event) => setUploadForm((prev) => ({ ...prev, fileName: event.target.value }))} />
-                <Button variant="outlined" onClick={handleGenerateUploadUrl} disabled={busy.generate} sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }}>
-                  {busy.generate ? "Generating..." : "Generate Upload URL"}
-                </Button>
-                <TextField label="Upload URL (use for S3 PUT)" size="small" multiline minRows={2} value={uploadData.uploadUrl} InputProps={{ readOnly: true }} />
-                <TextField label="S3 Key (from upload-url response or manual)" size="small" value={confirmKey} onChange={(event) => setConfirmKey(event.target.value)} />
-                <Button variant="contained" onClick={handleConfirmImage} disabled={busy.confirm} sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}>
-                  {busy.confirm ? "Confirming..." : "Confirm Image"}
-                </Button>
+                {imageUrl ? (
+                  <Box
+                    component="img"
+                    src={imageUrl}
+                    alt=""
+                    sx={{ maxWidth: "100%", maxHeight: 220, objectFit: "contain", borderRadius: 1, border: `1px solid ${alpha("#0f3828", 0.12)}` }}
+                  />
+                ) : (
+                  <Typography variant="body2" sx={{ color: "#4e5a54" }}>
+                    No image URL yet.
+                  </Typography>
+                )}
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+                  <Button variant="outlined" component="label" sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }}>
+                    Choose image
+                    <input ref={imageInputRef} hidden type="file" accept="image/*" onChange={onPickImage} />
+                  </Button>
+                  <Button variant="contained" onClick={handleUploadAndConfirm} disabled={busy.upload || !pickedFile} sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}>
+                    {busy.upload ? "Uploading…" : "Upload and confirm"}
+                  </Button>
+                  {pickedFile ? (
+                    <Button variant="text" onClick={clearPickedFile} sx={{ textTransform: "none", fontWeight: 700 }}>
+                      Clear selection
+                    </Button>
+                  ) : null}
+                </Stack>
+                {pickedFile ? (
+                  <Typography variant="caption" sx={{ color: "#4e5a54", wordBreak: "break-all" }}>
+                    Selected: {pickedFile.name}
+                  </Typography>
+                ) : null}
               </Stack>
             </Paper>
           </Stack>

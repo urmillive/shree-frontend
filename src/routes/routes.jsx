@@ -9,6 +9,7 @@ import AdminUserEdit from "../Admin/pages/AdminUserEdit";
 import AdminUsers from "../Admin/pages/AdminUsers";
 import AdminProducts from "../Admin/pages/AdminProducts";
 import AdminProductCreate from "../Admin/pages/AdminProductCreate";
+import AdminProductDetail from "../Admin/pages/AdminProductDetail";
 import AdminBanners from "../Admin/pages/AdminBanners";
 import AdminBannerList from "../Admin/pages/AdminBannerList";
 import AdminBannerDetail from "../Admin/pages/AdminBannerDetail";
@@ -35,37 +36,60 @@ import OrdersAnalyticsPage from "../Admin/pages/analytics/OrdersAnalyticsPage";
 import ReturnsAnalyticsPage from "../Admin/pages/analytics/ReturnsAnalyticsPage";
 import RevenueAnalyticsPage from "../Admin/pages/analytics/RevenueAnalyticsPage";
 import TopProductsAnalyticsPage from "../Admin/pages/analytics/TopProductsAnalyticsPage";
+import CustomerLayout from "../Customers/components/CustomerLayout";
 import AddressForm from "../Customers/Pages/AddressForm";
 import AddressList from "../Customers/Pages/AddressList";
 import ChangePassword from "../Customers/Pages/ChangePassword";
 import Forgetpassword from "../Customers/Pages/Forgetpassword";
+import CategoryDetail from "../Customers/Pages/CategoryDetail";
 import Home from "../Customers/Pages/Home";
 import Login from "../Customers/Pages/Login";
 import Profile from "../Customers/Pages/Profile";
 import Resetpassword from "../Customers/Pages/Resetpassword";
 import Signup from "../Customers/Pages/Signup";
 import ProtectedRoute from "./ProtectedRoute";
+import ShopByCategoryPage from "../Customers/Pages/ShopByCategoryPage";
+import Products from "../Customers/Pages/Products";
+import ProductDetail from "../Customers/Pages/ProductDetail";
+import Cart from "../Customers/Pages/Cart";
+import Checkout from "../Customers/Pages/Checkout";
+import OrderDetail from "../Customers/Pages/OrderDetail";
+import OrdersList from "../Customers/Pages/OrdersList";
+import Wishlist from "../Customers/Pages/Wishlist";
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
-      <Route path="/forgetpassword" element={<Forgetpassword />} />
-      <Route path="/resetpassword" element={<Resetpassword />} />
-      <Route element={<ProtectedRoute />}>
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/profile/change-password" element={<ChangePassword />} />
-        <Route path="/profile/addresses" element={<AddressList />} />
-        <Route path="/profile/addresses/new" element={<AddressForm />} />
-        <Route path="/profile/addresses/:addressId/edit" element={<AddressForm />} />
+      <Route element={<CustomerLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/products/:slug" element={<ProductDetail />} />
+        <Route path="/cart" element={<Cart />} />
+        <Route path="/categories" element={<ShopByCategoryPage />} />
+        <Route path="/categories/:slug" element={<CategoryDetail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/forgetpassword" element={<Forgetpassword />} />
+        <Route path="/resetpassword" element={<Resetpassword />} />
+        <Route element={<ProtectedRoute />}>
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/profile/change-password" element={<ChangePassword />} />
+          <Route path="/profile/addresses" element={<AddressList />} />
+          <Route path="/profile/addresses/new" element={<AddressForm />} />
+          <Route path="/profile/addresses/:addressId/edit" element={<AddressForm />} />
+          <Route path="/wishlist" element={<Wishlist />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders" element={<OrdersList />} />
+          <Route path="/orders/:orderNumber" element={<OrderDetail />} />
+        </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={["super_admin", "manager"]} />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/products" element={<AdminProducts />} />
         <Route path="/admin/products/create" element={<AdminProductCreate />} />
+        <Route path="/admin/products/:productId/edit" element={<AdminProductCreate />} />
+        <Route path="/admin/products/:productId" element={<AdminProductDetail />} />
         <Route path="/admin/users/:userId" element={<AdminUserDetail />} />
         <Route path="/admin/users/:userId/edit" element={<AdminUserEdit />} />
         <Route path="/admin/homepage-cms" element={<AdminHomepageCMS />} />
