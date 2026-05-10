@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   Box,
   Button,
   Chip,
+  CircularProgress,
   FormControl,
   InputLabel,
   MenuItem,
@@ -14,16 +15,17 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
 const pageBg = "#ffffff";
-const STATUS_OPTIONS = ["draft", "published", "archived"];
+const STATUS_OPTIONS = ["draft", "active", "inactive"];
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
 const FABRIC_OPTIONS = ["Cotton", "Linen", "Silk", "Organic Cotton", "Other"];
+const TAX_PERCENT_OPTIONS = ["0", "5", "12", "18"];
 const SECTIONS = ["Basic Info", "Pricing", "SEO", "Variants"];
 
 const createEmptyVariant = () => ({
@@ -67,15 +69,53 @@ function normalizeCategoriesListPayload(payload) {
   return [];
 }
 
-function getCreateErrorMessage(error) {
+function getProductFormErrorMessage(error, isEdit) {
   const rawMessage = error?.response?.data?.message || error?.message || "";
-  if (!rawMessage) return "Failed to create product.";
+  if (!rawMessage) return isEdit ? "Failed to update product." : "Failed to create product.";
 
   if (rawMessage.toLowerCase().includes("invalid enum value")) {
     return `Please select a valid fabric: ${FABRIC_OPTIONS.join(", ")}.`;
   }
 
   return rawMessage;
+}
+
+function mapProductToForm(product) {
+  if (!product) return initialForm;
+  const cat = product.category;
+  const categoryId =
+    typeof cat === "object" && cat !== null ? String(cat._id ?? cat.id ?? "") : String(cat ?? "");
+
+  const tagsRaw = product.tags;
+  const tags =
+    Array.isArray(tagsRaw) ? tagsRaw.map((t) => String(t).trim()).filter(Boolean).join(", ") : String(tagsRaw ?? "");
+
+  const rawVariants = Array.isArray(product.variants) ? product.variants : [];
+  const variants =
+    rawVariants.length > 0
+      ? rawVariants.map((item) => ({
+          colorName: String(item?.color?.name ?? item?.colorName ?? "").trim(),
+          colorHexCode: String(item?.color?.hexCode ?? item?.colorHexCode ?? "").trim(),
+          size: item?.size || "M",
+          stock: item?.stock != null && item?.stock !== "" ? String(item.stock) : "",
+        }))
+      : [createEmptyVariant()];
+
+  return {
+    name: String(product.name ?? "").trim(),
+    description: String(product.description ?? ""),
+    brand: String(product.brand ?? "Shree"),
+    category: categoryId,
+    fabric: String(product.fabric ?? ""),
+    tags,
+    regularPrice: product.regularPrice != null ? String(product.regularPrice) : "",
+    discountPrice: product.discountPrice != null ? String(product.discountPrice) : "",
+    taxPercent: String(product.taxPercent ?? product.tax ?? "5"),
+    status: product.status || "draft",
+    metaTitle: String(product.seo?.metaTitle ?? product.metaTitle ?? ""),
+    metaDescription: String(product.seo?.metaDescription ?? product.metaDescription ?? ""),
+    variants,
+  };
 }
 
 function normalizeProductImages(product) {
@@ -109,17 +149,17 @@ async function getProductImageUploadUrl(productId, payload) {
   return data?.data !== undefined ? data.data : data;
 }
 
-async function uploadProductImageToS3(uploadUrl, file) {
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
-    body: file,
-  });
-  if (!response.ok) {
-    throw new Error("Failed to upload image to S3.");
-  }
-  return true;
-}
+// async function uploadProductImageToS3(uploadUrl, file) {
+//   const response = await fetch(uploadUrl, {
+//     method: "PUT",
+//     headers: { "Content-Type": file.type || "application/octet-stream" },
+//     body: file,
+//   });
+//   if (!response.ok) {
+//     throw new Error("Failed to upload image to S3.");
+//   }
+//   return true;
+// }
 
 async function confirmProductImageUpload(productId, payload) {
   const { data } = await client.post(`/admin/products/${productId}/image-confirm`, payload);
@@ -132,17 +172,46 @@ async function deleteProductImage(productId, key) {
   return data?.data !== undefined ? data.data : data;
 }
 
+function newStagingId() {
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+/** Upload one file via presigned URL + confirm; returns normalized product payload (or null). */
+async function uploadOneFileToProduct(productId, file, displayOrder) {
+  const uploadPayload = {
+    contentType: file.type || "application/octet-stream",
+    fileName: file.name || `product-image-${Date.now()}.jpg`,
+  };
+  const uploadData = await getProductImageUploadUrl(productId, uploadPayload);
+  const uploadUrl = uploadData?.uploadUrl;
+  const key = uploadData?.key;
+
+  if (!uploadUrl || !key) {
+    throw new Error("Upload URL response is missing uploadUrl or key.");
+  }
+
+  // await uploadProductImageToS3(uploadUrl, file);
+  return confirmProductImageUpload(productId, {
+    key,
+    displayOrder: Number(displayOrder),
+  });
+}
+
 const AdminProductCreate = () => {
   const navigate = useNavigate();
+  const { productId: editRouteProductId } = useParams();
+  const isEditMode = Boolean(editRouteProductId?.trim());
   const roleGate = localStorage.getItem("role");
 
   const [form, setForm] = useState(initialForm);
   const [categories, setCategories] = useState([]);
   const [creating, setCreating] = useState(false);
-  const [createdProductId, setCreatedProductId] = useState("");
+  const [loadingProduct, setLoadingProduct] = useState(isEditMode);
+  const [createdProductId, setCreatedProductId] = useState(isEditMode ? String(editRouteProductId).trim() : "");
   const [productImages, setProductImages] = useState([]);
-  const [imageFile, setImageFile] = useState(null);
-  const [imageDisplayOrder, setImageDisplayOrder] = useState(0);
+  /** Local queue: selected files not yet uploaded (shown before first save on create, or before "Upload all"). */
+  const [stagingFiles, setStagingFiles] = useState([]);
+  const imageFileInputRef = useRef(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageSuccess, setImageSuccess] = useState("");
@@ -166,6 +235,34 @@ const AdminProductCreate = () => {
     loadCategories();
   }, [loadCategories]);
 
+  const loadProductForEdit = useCallback(async () => {
+    const id = editRouteProductId?.trim();
+    if (!id) return;
+    setLoadingProduct(true);
+    setError("");
+    try {
+      const { data } = await client.get(`/admin/products/${encodeURIComponent(id)}`);
+      const product = normalizeProductPayload(data);
+      if (!product) {
+        setError("Product not found.");
+        return;
+      }
+      setForm(mapProductToForm(product));
+      const pid = pickProductId(product);
+      setCreatedProductId(pid ? String(pid) : id);
+      const nextImages = normalizeProductImages(product);
+      setProductImages(nextImages);
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Failed to load product.");
+    } finally {
+      setLoadingProduct(false);
+    }
+  }, [editRouteProductId]);
+
+  useEffect(() => {
+    if (isEditMode) loadProductForEdit();
+  }, [isEditMode, loadProductForEdit]);
+
   const onFormChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -188,12 +285,28 @@ const AdminProductCreate = () => {
     }));
   };
 
+  const appendImagesFromInput = (event) => {
+    const picked = Array.from(event.target.files || []).filter((f) => f && String(f.type || "").startsWith("image/"));
+    if (!picked.length) return;
+    setStagingFiles((prev) => [...prev, ...picked.map((file) => ({ id: newStagingId(), file }))]);
+    setImageError("");
+    if (imageFileInputRef.current) {
+      imageFileInputRef.current.value = "";
+    }
+  };
+
+  const removeStagingRow = (id) => {
+    setStagingFiles((prev) => prev.filter((row) => row.id !== id));
+  };
+
   const handleCreate = async (event) => {
     event.preventDefault();
     setError("");
     setSuccess("");
     setImageError("");
     setImageSuccess("");
+
+    const stagingSnapshot = [...stagingFiles];
 
     const parsedTags = form.tags
       .split(",")
@@ -236,29 +349,75 @@ const AdminProductCreate = () => {
 
     setCreating(true);
     try {
-      const { data } = await client.post("/admin/products", payload);
-      const created = normalizeProductPayload(data);
-      const id = pickProductId(created);
-      const slug = created?.slug ? String(created.slug) : "";
-      setSuccess(`Product created${id ? ` (id: ${id})` : ""}${slug ? ` (slug: ${slug})` : ""}.`);
-      setCreatedProductId(id ? String(id) : "");
-      const nextImages = normalizeProductImages(created);
-      setProductImages(nextImages);
-      setImageDisplayOrder(nextImages.length);
+      if (isEditMode) {
+        const id = editRouteProductId.trim();
+        const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, payload);
+        const updated = normalizeProductPayload(data);
+        const nextId = pickProductId(updated) || id;
+        const slug = updated?.slug ? String(updated.slug) : "";
+        setSuccess(`Product updated${slug ? ` (slug: ${slug})` : ""}.`);
+        setCreatedProductId(String(nextId));
+        let mergedProduct = updated;
+        setProductImages(normalizeProductImages(updated));
+
+        if (nextId && stagingSnapshot.length > 0) {
+          setUploadingImage(true);
+          try {
+            for (const row of stagingSnapshot) {
+              const order = normalizeProductImages(mergedProduct).length;
+              mergedProduct = await uploadOneFileToProduct(String(nextId), row.file, order);
+            }
+            setProductImages(normalizeProductImages(mergedProduct));
+            setStagingFiles([]);
+            setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
+          } catch (imgErr) {
+            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+          } finally {
+            setUploadingImage(false);
+          }
+        }
+      } else {
+        const { data } = await client.post("/admin/products", payload);
+        const created = normalizeProductPayload(data);
+        const id = pickProductId(created);
+        const slug = created?.slug ? String(created.slug) : "";
+        setSuccess(`Product created${id ? ` (id: ${id})` : ""}${slug ? ` (slug: ${slug})` : ""}.`);
+        setCreatedProductId(id ? String(id) : "");
+        let mergedProduct = created;
+        const nextImages = normalizeProductImages(created);
+        setProductImages(nextImages);
+
+        if (id && stagingSnapshot.length > 0) {
+          setUploadingImage(true);
+          try {
+            for (const row of stagingSnapshot) {
+              const order = normalizeProductImages(mergedProduct).length;
+              mergedProduct = await uploadOneFileToProduct(String(id), row.file, order);
+            }
+            setProductImages(normalizeProductImages(mergedProduct));
+            setStagingFiles([]);
+            setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
+          } catch (imgErr) {
+            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+          } finally {
+            setUploadingImage(false);
+          }
+        }
+      }
     } catch (e) {
-      setError(getCreateErrorMessage(e));
+      setError(getProductFormErrorMessage(e, isEditMode));
     } finally {
       setCreating(false);
     }
   };
 
-  const handleUploadImage = async () => {
+  const handleUploadAllStaging = async () => {
     if (!createdProductId) {
-      setImageError("Create the product first, then upload images.");
+      setImageError(isEditMode ? "Product id missing. Reload the page." : "Save the product first, then upload queued images.");
       return;
     }
-    if (!imageFile) {
-      setImageError("Choose an image file before uploading.");
+    if (!stagingFiles.length) {
+      setImageError("Add at least one image to the queue before uploading.");
       return;
     }
 
@@ -266,32 +425,24 @@ const AdminProductCreate = () => {
     setImageSuccess("");
     setUploadingImage(true);
 
-    try {
-      const uploadPayload = {
-        contentType: imageFile.type || "application/octet-stream",
-        fileName: imageFile.name || `product-image-${Date.now()}.jpg`,
-      };
-      const uploadData = await getProductImageUploadUrl(createdProductId, uploadPayload);
-      const uploadUrl = uploadData?.uploadUrl;
-      const key = uploadData?.key;
+    const queue = [...stagingFiles];
 
-      if (!uploadUrl || !key) {
-        throw new Error("Upload URL response is missing uploadUrl or key.");
+    try {
+      let lastProductPayload = null;
+      for (const row of queue) {
+        const orderSoFar = normalizeProductImages(lastProductPayload ?? { images: productImages }).length;
+        lastProductPayload = await uploadOneFileToProduct(createdProductId, row.file, orderSoFar);
       }
 
-      await uploadProductImageToS3(uploadUrl, imageFile);
-      const updatedProduct = await confirmProductImageUpload(createdProductId, {
-        key,
-        displayOrder: Number(imageDisplayOrder),
-      });
-
-      const nextImages = normalizeProductImages(updatedProduct);
+      const nextImages = normalizeProductImages(lastProductPayload ?? { images: productImages });
       setProductImages(nextImages);
-      setImageDisplayOrder(nextImages.length);
-      setImageFile(null);
-      setImageSuccess("Image uploaded and confirmed successfully.");
+      setStagingFiles([]);
+      setImageSuccess(`${queue.length} image(s) uploaded and confirmed.`);
+      if (imageFileInputRef.current) {
+        imageFileInputRef.current.value = "";
+      }
     } catch (e) {
-      setImageError(e?.response?.data?.message || e?.message || "Failed to upload image.");
+      setImageError(e?.response?.data?.message || e?.message || "Failed to upload image(s).");
     } finally {
       setUploadingImage(false);
     }
@@ -306,7 +457,6 @@ const AdminProductCreate = () => {
       await deleteProductImage(createdProductId, key);
       const nextImages = productImages.filter((item) => item.key !== key);
       setProductImages(nextImages);
-      setImageDisplayOrder(nextImages.length);
       setImageSuccess("Image deleted.");
     } catch (e) {
       setImageError(e?.response?.data?.message || e?.message || "Failed to delete image.");
@@ -334,7 +484,15 @@ const AdminProductCreate = () => {
           items={[
             { label: "Dashboard", to: "/admin/dashboard" },
             { label: "Products", to: "/admin/products" },
-            { label: "Create Product" },
+            ...(isEditMode
+              ? [
+                  {
+                    label: "Product",
+                    to: `/admin/products/${encodeURIComponent(editRouteProductId.trim())}`,
+                  },
+                  { label: "Edit" },
+                ]
+              : [{ label: "Create Product" }]),
           ]}
         />
         <Paper
@@ -350,10 +508,10 @@ const AdminProductCreate = () => {
         >
           <Stack spacing={1.1} sx={{ mb: 2.2 }}>
             <Typography variant="h6" sx={{ fontWeight: 800, color: "#1f2a24" }}>
-              Create Product
+              {isEditMode ? "Edit Product" : "Create Product"}
             </Typography>
             <Typography variant="body2" sx={{ color: "#5a6761" }}>
-              Fill all fields in one form and create product quickly.
+              {isEditMode ? "Update catalog fields, variants, and images." : "Fill all fields in one form and create product quickly."}
             </Typography>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ pt: 0.4 }}>
               {SECTIONS.map((section, index) => (
@@ -372,7 +530,13 @@ const AdminProductCreate = () => {
             </Stack>
           </Stack>
 
-          <Stack spacing={1.75}>
+          {loadingProduct ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+              <CircularProgress size={32} sx={{ color: accent }} />
+            </Box>
+          ) : (
+            <>
+              <Stack spacing={1.75}>
             <TextField label="Name" fullWidth size="small" value={form.name} onChange={(e) => onFormChange("name", e.target.value)} required />
 
             <FormControl fullWidth size="small" >
@@ -418,6 +582,9 @@ const AdminProductCreate = () => {
                 <MenuItem value="">
                   <em>Select fabric</em>
                 </MenuItem>
+                {form.fabric && !FABRIC_OPTIONS.includes(form.fabric) ? (
+                  <MenuItem value={form.fabric}>{form.fabric}</MenuItem>
+                ) : null}
                 {FABRIC_OPTIONS.map((item) => (
                   <MenuItem key={item} value={item}>
                     {item}
@@ -434,8 +601,13 @@ const AdminProductCreate = () => {
                 value={form.status}
                 onChange={(e) => onFormChange("status", e.target.value)}
               >
+                {form.status && !STATUS_OPTIONS.includes(form.status) ? (
+                  <MenuItem value={form.status} sx={{ textTransform: "capitalize" }}>
+                    {form.status} (current)
+                  </MenuItem>
+                ) : null}
                 {STATUS_OPTIONS.map((item) => (
-                  <MenuItem key={item} value={item}>
+                  <MenuItem key={item} value={item} sx={{ textTransform: "capitalize" }}>
                     {item}
                   </MenuItem>
                 ))}
@@ -448,14 +620,28 @@ const AdminProductCreate = () => {
 
             <TextField label="Discount Price" type="number" fullWidth size="small" value={form.discountPrice} onChange={(e) => onFormChange("discountPrice", e.target.value)} required />
 
-            <TextField label="Tax Percent" type="number" fullWidth size="small" value={form.taxPercent} onChange={(e) => onFormChange("taxPercent", e.target.value)} />
+            <FormControl fullWidth size="small">
+              <InputLabel id="create-tax-percent-label">Tax Percent</InputLabel>
+              <Select
+                labelId="create-tax-percent-label"
+                label="Tax Percent"
+                value={form.taxPercent}
+                onChange={(e) => onFormChange("taxPercent", e.target.value)}
+              >
+                {TAX_PERCENT_OPTIONS.map((pct) => (
+                  <MenuItem key={pct} value={pct}>
+                    {pct}%
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <TextField label="SEO Meta Title" fullWidth size="small" value={form.metaTitle} onChange={(e) => onFormChange("metaTitle", e.target.value)} />
 
             <TextField label="SEO Meta Description" fullWidth size="small" value={form.metaDescription} onChange={(e) => onFormChange("metaDescription", e.target.value)} />
-          </Stack>
+              </Stack>
 
-          <Box sx={{ mt: 2.5 }}>
+              <Box sx={{ mt: 2.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Typography sx={{ fontWeight: 800, color: "#1f2a24" }}>Variants</Typography>
               <Button size="small" variant="outlined" onClick={addVariant} sx={{ textTransform: "none", borderColor: alpha("#0f3828", 0.2), color: "#1f2a24" }}>
@@ -491,47 +677,69 @@ const AdminProductCreate = () => {
                 </Paper>
               ))}
             </Stack>
-          </Box>
+              </Box>
+            </>
+          )}
 
-          {createdProductId ? (
+          {!loadingProduct && (!isEditMode || Boolean(String(createdProductId || "").trim())) ? (
             <Box sx={{ mt: 2.5 }}>
-              <Typography sx={{ mb: 1.1, fontWeight: 800, color: "#1f2a24" }}>Product Images (S3)</Typography>
+              <Typography sx={{ mb: 1.1, fontWeight: 800, color: "#1f2a24" }}>Product images</Typography>
               <Typography variant="body2" sx={{ mb: 1.2, color: "#5a6761" }}>
-                Choose an image, upload via presigned URL, and confirm automatically.
+                {createdProductId
+                  ? "Add one or more images to the queue, then upload. Display order is set automatically (append)."
+                  : "Add images to the queue now; after you create the product, they upload only if the queue is not empty. No upload API runs until then."}
               </Typography>
               <Stack spacing={1.2}>
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
                   <Button variant="outlined" component="label" sx={{ textTransform: "none", borderColor: alpha("#0f3828", 0.2), color: "#1f2a24" }}>
-                    {imageFile ? `Selected: ${imageFile.name}` : "Choose Image"}
+                    Add images (multi)
                     <input
+                      ref={imageFileInputRef}
                       hidden
                       type="file"
                       accept="image/*"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0] || null;
-                        setImageFile(file);
-                      }}
+                      multiple
+                      onChange={appendImagesFromInput}
                     />
                   </Button>
-                  <TextField
-                    label="Display Order"
-                    type="number"
-                    size="small"
-                    value={imageDisplayOrder}
-                    onChange={(e) => setImageDisplayOrder(Number(e.target.value))}
-                    sx={{ width: { xs: "100%", sm: 180 } }}
-                  />
                   <Button
+                    type="button"
                     variant="contained"
-                    onClick={handleUploadImage}
-                    disabled={uploadingImage}
+                    onClick={handleUploadAllStaging}
+                    disabled={uploadingImage || creating || !stagingFiles.length || !String(createdProductId || "").trim()}
                     sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, boxShadow: "none", "&:hover": { bgcolor: "#8f723c" } }}
                   >
-                    {uploadingImage ? "Uploading..." : "Upload & Confirm"}
+                    {uploadingImage ? "Uploading…" : "Upload queued images"}
                   </Button>
                 </Stack>
+                {stagingFiles.length ? (
+                  <Stack spacing={0.75}>
+                    <Typography variant="caption" sx={{ color: "#5a6761", fontWeight: 700 }}>
+                      Queued (not on server yet)
+                    </Typography>
+                    {stagingFiles.map((row) => (
+                      <Paper
+                        key={row.id}
+                        elevation={0}
+                        sx={{ p: 1.1, borderRadius: 2, border: `1px dashed ${alpha(accent, 0.45)}`, bgcolor: alpha(accent, 0.04) }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                          <Typography variant="body2" sx={{ color: "#2a4135", wordBreak: "break-all" }}>
+                            {row.file.name}
+                          </Typography>
+                          <Button size="small" color="error" variant="text" onClick={() => removeStagingRow(row.id)} sx={{ textTransform: "none", flexShrink: 0 }}>
+                            Remove
+                          </Button>
+                        </Stack>
+                      </Paper>
+                    ))}
+                  </Stack>
+                ) : null}
                 {productImages.length ? (
                   <Stack spacing={1}>
+                    <Typography variant="caption" sx={{ color: "#5a6761", fontWeight: 700 }}>
+                      On server
+                    </Typography>
                     {productImages.map((image) => (
                       <Paper
                         key={image.key}
@@ -539,7 +747,7 @@ const AdminProductCreate = () => {
                         sx={{ p: 1.2, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.12)}`, bgcolor: "#fcfcfc" }}
                       >
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between">
-                          <Box>
+                          <Box sx={{ minWidth: 0 }}>
                             <Typography variant="body2" sx={{ color: "#2a4135", fontWeight: 700 }}>
                               Order: {image.displayOrder}
                             </Typography>
@@ -547,14 +755,21 @@ const AdminProductCreate = () => {
                               {image.key}
                             </Typography>
                           </Box>
-                          <Stack direction="row" spacing={1}>
+                          <Stack direction="row" spacing={1} flexShrink={0}>
                             {image.url ? (
                               <Button size="small" variant="outlined" component="a" href={image.url} target="_blank" rel="noreferrer" sx={{ textTransform: "none" }}>
                                 Open
                               </Button>
                             ) : null}
-                            <Button size="small" color="error" variant="text" onClick={() => handleDeleteImage(image.key)} sx={{ textTransform: "none" }}>
-                              Delete
+                            <Button
+                              size="small"
+                              color="error"
+                              variant="text"
+                              onClick={() => handleDeleteImage(image.key)}
+                              disabled={uploadingImage}
+                              sx={{ textTransform: "none" }}
+                            >
+                              Remove
                             </Button>
                           </Stack>
                         </Stack>
@@ -572,16 +787,34 @@ const AdminProductCreate = () => {
           {imageSuccess ? <Alert severity="success" sx={{ mt: 2 }}>{imageSuccess}</Alert> : null}
 
           <Stack direction="row" justifyContent="space-between" sx={{ mt: 2 }}>
-            <Button variant="outlined" onClick={() => navigate("/admin/products")} sx={{ textTransform: "none", fontWeight: 700, borderColor: alpha("#0f3828", 0.25), color: "#1f2a24" }}>
-              Back to Products
+            <Button
+              variant="outlined"
+              onClick={() =>
+                isEditMode
+                  ? navigate(`/admin/products/${encodeURIComponent(editRouteProductId.trim())}`)
+                  : navigate("/admin/products")
+              }
+              sx={{ textTransform: "none", fontWeight: 700, borderColor: alpha("#0f3828", 0.25), color: "#1f2a24" }}
+            >
+              {isEditMode ? "Back to product" : "Back to Products"}
             </Button>
             <Button
               type="submit"
               variant="contained"
-              disabled={creating || loadingCategories}
+              disabled={creating || loadingCategories || loadingProduct || uploadingImage}
               sx={{ textTransform: "none", fontWeight: 800, bgcolor: accent, boxShadow: "none", "&:hover": { bgcolor: "#8f723c", boxShadow: "0 6px 18px rgba(171, 138, 72, 0.35)" } }}
             >
-              {creating ? "Creating..." : "Create Product"}
+              {creating
+                ? isEditMode
+                  ? stagingFiles.length
+                    ? "Saving & uploading images..."
+                    : "Saving..."
+                  : stagingFiles.length
+                    ? "Creating & uploading images..."
+                    : "Creating..."
+                : isEditMode
+                  ? "Save changes"
+                  : "Create Product"}
             </Button>
           </Stack>
         </Paper>

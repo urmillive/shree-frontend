@@ -18,7 +18,9 @@ import { colors, primaryAlpha } from "../../theme/theme";
 
 const authLayout = {
   pageBox: {
-    minHeight: "100vh",
+    flex: 1,
+    width: "100%",
+    minHeight: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",

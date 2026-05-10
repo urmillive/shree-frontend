@@ -1,6 +1,9 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { Box, Typography } from "@mui/material";
+import { Box, Container, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
+import HomepageBannerSlider from "../components/HomepageBannerSlider";
+import ShopCategoriesSection from "../components/ShopCategoriesSection";
+import RecentlyViewedSection from "../components/RecentlyViewedSection";
 import { colors } from "../../theme/theme";
 
 const Home = () => {
@@ -10,17 +13,21 @@ const Home = () => {
         minHeight: "100vh",
         bgcolor: colors.background,
         color: colors.text,
-        p: 3,
       }}
     >
-      <Typography variant="h4" component="h1" gutterBottom>
-        Home
-      </Typography>
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, "& a": { color: colors.text } }}>
-        <Link to="/profile">Profile</Link>
-        <Link to="/login">Login</Link>
-        <Link to="/signup">Signup</Link>
-      </Box>
+      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 }, py: { xs: 3, sm: 4 } }}>
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: -0.4, mb: 0.5 }}>
+          Home
+        </Typography>
+        <Typography variant="body2" sx={{ color: alpha(colors.text, 0.55), mb: { xs: 2, sm: 3 } }}>
+          Welcome — explore collections below.
+        </Typography>
+
+        <HomepageBannerSlider placement="hero" />
+        <HomepageBannerSlider placement="promo_strip" />
+        <ShopCategoriesSection />
+        <RecentlyViewedSection showClear />
+      </Container>
     </Box>
   );
 };
