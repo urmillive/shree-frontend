@@ -36,7 +36,7 @@ const AdminHomepageCMS = () => {
         </Stack>
 
         <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
               <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 0.75 }}>Banner Management</Typography>
               <Typography variant="body2" sx={{ color: "#4e5a54", mb: 1.25 }}>
@@ -47,7 +47,7 @@ const AdminHomepageCMS = () => {
               </Button>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
               <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 0.75 }}>Product List Sections</Typography>
               <Typography variant="body2" sx={{ color: "#4e5a54", mb: 1.25 }}>
@@ -58,7 +58,7 @@ const AdminHomepageCMS = () => {
               </Button>
             </Paper>
           </Grid>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
               <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 0.75 }}>Category Grid Sections</Typography>
               <Typography variant="body2" sx={{ color: "#4e5a54", mb: 1.25 }}>

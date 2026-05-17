@@ -377,7 +377,7 @@ const AdminOrderDetail = () => {
               </Stack>
 
               <Grid container spacing={1.5} sx={{ mt: 1 }}>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>
                     Tracking ID
                   </Typography>
@@ -385,7 +385,7 @@ const AdminOrderDetail = () => {
                     {shippingDetails.trackingId || "—"}
                   </Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>
                     AWB
                   </Typography>
@@ -393,7 +393,7 @@ const AdminOrderDetail = () => {
                     {shippingDetails.awb || "—"}
                   </Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>
                     Tracking URL
                   </Typography>
@@ -407,7 +407,7 @@ const AdminOrderDetail = () => {
                     )}
                   </Typography>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>
                     Shipping status
                   </Typography>
@@ -441,7 +441,7 @@ const AdminOrderDetail = () => {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Grid container spacing={2.5}>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Stack spacing={1.25}>
                     {orderEntries.left.map(([k, v]) => (
                       <Box key={k}>
@@ -455,7 +455,7 @@ const AdminOrderDetail = () => {
                     ))}
                   </Stack>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Stack spacing={1.25}>
                     {orderEntries.right.map(([k, v]) => (
                       <Box key={k}>

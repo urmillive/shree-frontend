@@ -169,7 +169,7 @@ const AdminBannerDetail = () => {
           </Paper>
         ) : banner ? (
           <Grid container spacing={2.5} display={"flex"} flexDirection={"column"} alignItems={"center"} justifyContent={"center"} >
-            <Grid item xs={12}>
+            <Grid size={{ xs: 12 }}>
               <Paper
                 elevation={0}
                 sx={{
@@ -190,7 +190,7 @@ const AdminBannerDetail = () => {
                 </Typography>
                 <Divider sx={{ my: 2 }} />
                 <Grid container spacing={2}>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1.25}>
                       {leftEntries.map((field) => (
                         <Box key={field.label}>
@@ -204,7 +204,7 @@ const AdminBannerDetail = () => {
                       ))}
                     </Stack>
                   </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Stack spacing={1.25}>
                       {rightEntries.map((field) => (
                         <Box key={field.label}>
@@ -219,7 +219,7 @@ const AdminBannerDetail = () => {
                     </Stack>
                   </Grid>
                 </Grid>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                       <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Desktop Image</Typography>
                       <Stack spacing={1}>
@@ -245,7 +245,7 @@ const AdminBannerDetail = () => {
                     </Paper>
                   </Grid>
                   
-                  <Grid item mt={2} xs={12} md={6}>  
+                  <Grid size={{ xs: 12, md: 6 }} sx={{ mt: 2 }}>  
                     <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                       <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Mobile Image</Typography>
                       <Stack spacing={1}>

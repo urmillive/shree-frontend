@@ -156,7 +156,7 @@ const AdminBanners = () => {
         ) : null}
 
         <Grid container spacing={2.5}>
-          <Grid item xs={12} md={6}>
+          <Grid size={{ xs: 12, md: 6 }}>
             <Paper
               component="form"
               onSubmit={handleCreateBanner}
@@ -184,7 +184,7 @@ const AdminBanners = () => {
                   size="small"
                 />
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="CTA Button Text"
                       value={bannerForm.ctaText}
@@ -193,7 +193,7 @@ const AdminBanners = () => {
                       fullWidth
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="CTA URL"
                       value={bannerForm.ctaUrl}
@@ -204,7 +204,7 @@ const AdminBanners = () => {
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       select
                       label="Placement"
@@ -220,7 +220,7 @@ const AdminBanners = () => {
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="Display order"
                       type="number"
@@ -232,7 +232,7 @@ const AdminBanners = () => {
                   </Grid>
                 </Grid>
                 <Grid container spacing={1.5}>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="Start"
                       type="datetime-local"
@@ -243,7 +243,7 @@ const AdminBanners = () => {
                       fullWidth
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <TextField
                       label="End"
                       type="datetime-local"

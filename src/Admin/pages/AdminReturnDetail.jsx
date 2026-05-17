@@ -398,7 +398,7 @@ const AdminReturnDetail = () => {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Grid container spacing={2.5}>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Stack spacing={1.25}>
                     {returnEntries.left.map(([k, v]) => (
                       <Box key={k}>
@@ -412,7 +412,7 @@ const AdminReturnDetail = () => {
                     ))}
                   </Stack>
                 </Grid>
-                <Grid item xs={12} md={6}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <Stack spacing={1.25}>
                     {returnEntries.right.map(([k, v]) => (
                       <Box key={k}>

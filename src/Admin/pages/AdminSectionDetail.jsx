@@ -264,7 +264,7 @@ const AdminSectionDetail = () => {
           <Alert severity="error">No section data found.</Alert>
         ) : (
           <Grid container spacing={2.5}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                 <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Edit section</Typography>
                 <Stack spacing={1.25}>
@@ -288,7 +288,7 @@ const AdminSectionDetail = () => {
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                 <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Section metadata</Typography>
                 <Stack spacing={0.8}>
@@ -308,7 +308,7 @@ const AdminSectionDetail = () => {
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                 <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Products in section</Typography>
                 <Stack spacing={1.25}>
@@ -333,7 +333,7 @@ const AdminSectionDetail = () => {
               </Paper>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
                 <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Categories in section</Typography>
                 <Stack spacing={1.25}>

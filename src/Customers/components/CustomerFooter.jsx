@@ -28,7 +28,7 @@ const CustomerFooter = () => {
     >
       <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
         <Grid container spacing={{ xs: 3, sm: 4 }}>
-          <Grid item xs={12} sm={5} md={4}>
+          <Grid size={{ xs: 12, sm: 5, md: 4 }}>
             <Stack spacing={1}>
               <Typography variant="subtitle1" fontWeight={800} letterSpacing={-0.2}>
                 Shree Fashion
@@ -38,7 +38,7 @@ const CustomerFooter = () => {
               </Typography>
             </Stack>
           </Grid>
-          <Grid item xs={6} sm={3} md={2}>
+          <Grid size={{ xs: 6, sm: 3, md: 2 }}>
             <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 1, color: alpha(colors.text, 0.5) }}>
               Shop
             </Typography>
@@ -51,7 +51,7 @@ const CustomerFooter = () => {
               </Link>
             </Stack>
           </Grid>
-          <Grid item xs={6} sm={4} md={3}>
+          <Grid size={{ xs: 6, sm: 4, md: 3 }}>
             <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 1, color: alpha(colors.text, 0.5) }}>
               Account
             </Typography>
@@ -70,7 +70,7 @@ const CustomerFooter = () => {
               </Link>
             </Stack>
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid size={{ xs: 12, md: 3 }}>
             <Typography variant="overline" sx={{ fontWeight: 700, letterSpacing: 1, color: alpha(colors.text, 0.5) }}>
               Help
             </Typography>

@@ -33,7 +33,7 @@ const PRODUCTS_LIMIT = 12;
 
 const renderProductSkeletons = () =>
   Array.from({ length: 8 }).map((_, idx) => (
-    <Grid item xs={12} sm={6} md={4} lg={3} key={idx}>
+    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={idx}>
       <Skeleton variant="rounded" height={360} />
     </Grid>
   ));
@@ -258,7 +258,7 @@ const CategoryDetail = () => {
                       const childName = getPublicCategoryName(child);
                       const key = childSlug || `${childName}-${index}`;
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={key}>
+                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={key}>
                           <Card
                             elevation={0}
                             sx={{
@@ -305,11 +305,7 @@ const CategoryDetail = () => {
                     ? renderProductSkeletons()
                     : products.map((product) => (
                         <Grid
-                          item
-                          xs={12}
-                          sm={6}
-                          md={4}
-                          lg={3}
+                          size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
                           key={product?._id || product?.id || product?.slug || product?.name}
                         >
                           <ProductCard product={product} />

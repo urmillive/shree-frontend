@@ -216,7 +216,7 @@ const AdminBannerImages = () => {
           </Paper>
         ) : (
           <Grid container spacing={2.5}>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <ImageCard
                 title="Desktop Banner Image"
                 imageUrl={desktopImageUrl}
@@ -227,7 +227,7 @@ const AdminBannerImages = () => {
                 onUpload={() => uploadAndConfirm({ file: desktopFile, isMobile: false })}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid size={{ xs: 12, md: 6 }}>
               <ImageCard
                 title="Mobile Banner Image"
                 imageUrl={mobileImageUrl}
