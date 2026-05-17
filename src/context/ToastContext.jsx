@@ -9,6 +9,37 @@ const ToastContext = createContext(null);
 
 const DEFAULT_DURATION = 4200;
 
+const TOAST_SEVERITY_BG = {
+  error: "#e53935",
+  warning: "#ff9800",
+  success: "#ad8d4d",
+};
+
+const toastCloseButtonSx = {
+  color: "#fff",
+  "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.12)" },
+};
+
+function getToastAlertSx(severity) {
+  const bg = TOAST_SEVERITY_BG[severity];
+  if (!bg) {
+    return { width: "100%" };
+  }
+
+  return {
+    width: "100%",
+    bgcolor: bg,
+    color: "#fff",
+    "& .MuiAlert-icon": { color: "#fff" },
+    "& .MuiAlert-message": { color: "#fff" },
+    "& .MuiAlert-action .MuiIconButton-root": toastCloseButtonSx,
+    [`&.MuiAlert-filled${severity.charAt(0).toUpperCase()}${severity.slice(1)}`]: {
+      bgcolor: bg,
+      color: "#fff",
+    },
+  };
+}
+
 export function ToastProvider({ children }) {
   const [toast, setToast] = useState({
     open: false,
@@ -62,7 +93,12 @@ export function ToastProvider({ children }) {
         onClose={closeToast}
         anchorOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <Alert onClose={closeToast} severity={toast.severity} variant="filled" sx={{ width: "100%" }}>
+        <Alert
+          onClose={closeToast}
+          severity={toast.severity}
+          variant="filled"
+          sx={getToastAlertSx(toast.severity)}
+        >
           {toast.message}
         </Alert>
       </Snackbar>
