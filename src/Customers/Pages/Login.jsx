@@ -25,7 +25,7 @@ import client, {
   setStoredUserDisplayName,
 } from "../../Setup/Axios";
 import { colors, primaryAlpha } from "../../theme/theme";
-import { mergeGuestCart } from "../services/publicCartService";
+import { useCart } from "../context/CartContext";
 
 const authLayout = {
   card: {
@@ -116,6 +116,7 @@ const motionSafe = (active, reduced) => ({
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { mergeCurrentGuestCart } = useCart();
   const redirectTo =
     location.state?.from?.pathname && typeof location.state.from.pathname === "string"
       ? location.state.from.pathname
@@ -185,7 +186,7 @@ const Login = () => {
       } else {
         setStoredAccessToken(accessToken);
         try {
-          await mergeGuestCart();
+          await mergeCurrentGuestCart();
         } catch {
           // Keep login successful even if merge fails.
         }
