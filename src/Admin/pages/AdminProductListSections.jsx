@@ -103,15 +103,11 @@ const AdminProductListSections = () => {
             Product List Sections
           </Typography>
           <Stack direction="row" spacing={1}>
-            <Button variant="text" sx={{ textTransform: "none", fontWeight: 700, color: "#2a4135" }} onClick={() => navigate("/admin/homepage-cms")}>
-              Back to CMS
-            </Button>
+            
             <Button variant="contained" sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }} onClick={() => navigate("/admin/homepage-cms/product-list-sections/create")}>
               Create Product List Section
             </Button>
-            <Button variant="outlined" sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }} onClick={loadSections}>
-              Refresh
-            </Button>
+            
           </Stack>
         </Stack>
 

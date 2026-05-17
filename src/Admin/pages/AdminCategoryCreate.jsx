@@ -5,7 +5,15 @@ import { useNavigate } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
 import { getApiErrorMessage } from "../../utils/apiError";
-import { createAdminCategory, fetchAdminCategories, flattenCategories, uploadAdminCategoryImageFromFile } from "../services/adminCategoriesService";
+import {
+  canBeParentCategory,
+  createAdminCategory,
+  fetchAdminCategories,
+  flattenCategories,
+  getCategoryLevel,
+  MAX_CATEGORY_DEPTH,
+  uploadAdminCategoryImageFromFile,
+} from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
@@ -32,6 +40,8 @@ const AdminCategoryCreate = () => {
   const [categoriesFlat, setCategoriesFlat] = useState([]);
   const [categoryImageFile, setCategoryImageFile] = useState(null);
   const categoryImageInputRef = useRef(null);
+
+  const parentOptions = useMemo(() => categoriesFlat.filter(canBeParentCategory), [categoriesFlat]);
 
   const loadParentOptions = async () => {
     try {
@@ -68,6 +78,16 @@ const AdminCategoryCreate = () => {
     if (!createForm.name.trim()) {
       setFeedback({ type: "error", message: "Category name is required." });
       return;
+    }
+    if (createForm.parent) {
+      const parent = categoriesFlat.find((category) => getCategoryId(category) === createForm.parent);
+      if (parent && !canBeParentCategory(parent)) {
+        setFeedback({
+          type: "error",
+          message: `Only ${MAX_CATEGORY_DEPTH} category levels are allowed (Level 1 → Level 2 → Level 3). Choose a Level 1 or Level 2 parent.`,
+        });
+        return;
+      }
     }
     setCreating(true);
     setFeedback({ type: "", message: "" });
@@ -158,16 +178,20 @@ const AdminCategoryCreate = () => {
             <TextField label="Name" size="small" required value={createForm.name} onChange={(event) => setCreateForm((prev) => ({ ...prev, name: event.target.value }))} />
             <TextField label="Description" size="small" value={createForm.description} onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))} />
             <TextField select label="Parent (optional)" size="small" value={createForm.parent} onChange={(event) => setCreateForm((prev) => ({ ...prev, parent: event.target.value }))}>
-              <MenuItem value="">Root category</MenuItem>
-              {categoriesFlat.map((category) => {
+              <MenuItem value="">Level 1 — root category</MenuItem>
+              {parentOptions.map((category) => {
                 const id = getCategoryId(category);
+                const level = getCategoryLevel(category);
                 return (
                   <MenuItem key={`parent-${id}`} value={id}>
-                    {category?._uiPathLabel || category?.name || id}
+                    Level {level + 1} — {category?._uiPathLabel || category?.name || id}
                   </MenuItem>
                 );
               })}
             </TextField>
+            <Typography variant="caption" sx={{ color: "#4e5a54", mt: -0.5 }}>
+              Up to {MAX_CATEGORY_DEPTH} levels: Level 1 (root), Level 2, and Level 3. Level 3 categories cannot have children.
+            </Typography>
             <TextField label="Display Order" type="number" size="small" value={createForm.displayOrder} onChange={(event) => setCreateForm((prev) => ({ ...prev, displayOrder: event.target.value }))} />
             <TextField select label="Status" size="small" value={createForm.isActive ? "active" : "inactive"} onChange={(event) => setCreateForm((prev) => ({ ...prev, isActive: event.target.value === "active" }))}>
               <MenuItem value="active">active</MenuItem>
@@ -199,9 +223,24 @@ const AdminCategoryCreate = () => {
                 </Typography>
               ) : null}
             </Stack>
-            <Button type="submit" variant="contained" disabled={creating} sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}>
-              {creating ? (categoryImageFile ? "Creating & uploading image..." : "Creating...") : "Create Category"}
+            <Stack direction="row" gap={2} sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(-1)}
+              sx={{ textTransform: "none", fontWeight: 700, borderColor: alpha("#0f3828", 0.25), color: "#1f2a24" }}
+              disabled={creating}
+            >
+              Discard
             </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={creating}
+              sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+            >
+                {creating ? (categoryImageFile ? "Creating & uploading image..." : "Creating...") : "Create Category"}
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
       </Box>

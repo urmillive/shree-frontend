@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -35,6 +35,16 @@ const STATUS_OPTIONS = [
   { value: "draft", label: "Draft" },
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
+];
+
+const PRODUCT_COLUMNS = [
+  "name",
+  "createdAt",
+  "slug",
+  "brand",
+  "regularPrice",
+  "discountPrice",
+  "status",
 ];
 
 function formatDateTime(value) {
@@ -119,17 +129,6 @@ const AdminProducts = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const columns = useMemo(() => {
-    const sample = rows[0];
-    if (!sample || typeof sample !== "object") {
-      return ["name", "slug", "brand", "status", "regularPrice", "discountPrice", "updatedAt"];
-    }
-    const preferred = ["name", "slug", "brand", "status", "regularPrice", "discountPrice", "updatedAt", "createdAt"];
-    const keys = Object.keys(sample).filter((k) => !k.startsWith("__"));
-    const ordered = [...preferred.filter((k) => keys.includes(k)), ...keys.filter((k) => !preferred.includes(k))];
-    return ordered.slice(0, 8);
-  }, [rows]);
 
   const loadCategories = useCallback(async () => {
     try {
@@ -299,7 +298,7 @@ const AdminProducts = () => {
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: alpha("#ab8a48", 0.08) }}>
-                {columns.map((column) => (
+                {PRODUCT_COLUMNS.map((column) => (
                   <TableCell key={column} sx={{ fontWeight: 700, color: "#2a4135", textTransform: "capitalize" }}>
                     {column.replace(/([A-Z])/g, " $1").trim()}
                   </TableCell>
@@ -309,13 +308,13 @@ const AdminProducts = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={Math.max(columns.length, 1)} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={PRODUCT_COLUMNS.length} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} sx={{ color: accent }} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={Math.max(columns.length, 1)} align="center" sx={{ py: 4, color: "#6f7f77" }}>
+                  <TableCell colSpan={PRODUCT_COLUMNS.length} align="center" sx={{ py: 4, color: "#6f7f77" }}>
                     No products found.
                   </TableCell>
                 </TableRow>
@@ -334,9 +333,9 @@ const AdminProducts = () => {
                     }}
                     tabIndex={pickProductId(row) ? 0 : -1}
                   >
-                    {columns.map((column) => (
+                    {PRODUCT_COLUMNS.map((column) => (
                       <TableCell key={column} sx={{ color: "#1f2a24" }}>
-                        {column === "updatedAt" || column === "createdAt"
+                        {column === "createdAt"
                           ? formatDateTime(row?.[column])
                           : productDisplayCell(row?.[column])}
                       </TableCell>

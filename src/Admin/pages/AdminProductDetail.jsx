@@ -1,40 +1,71 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
-  Menu,
-  MenuItem,
+  Divider,
+  FormControlLabel,
+  Grid,
+  Link,
   Paper,
   Stack,
+  Tab,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { FiChevronDown } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
-const accent = "#ab8a48";
 const pageBg = "#ffffff";
+const accent = "#ab8a48";
+const forest = "#0f3828";
 
-const STATUS_OPTIONS = [
-  { value: "draft", label: "Draft" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
+const PRODUCT_FLAG_FIELDS = [
+  { key: "isTrending", label: "Trending" },
+  { key: "isFeatured", label: "Featured" },
+  { key: "isNewArrival", label: "New arrival" },
+  { key: "isBestSeller", label: "Best seller" },
+  { key: "isOnSale", label: "On sale" },
 ];
 
+const PRODUCT_FLAG_KEYS = new Set(PRODUCT_FLAG_FIELDS.map(({ key }) => key));
+
+const DETAIL_SKIP_KEYS = new Set([
+  "variants",
+  "images",
+  "seo",
+  "description",
+  "category",
+  "flags",
+  "__v",
+  ...PRODUCT_FLAG_KEYS,
+]);
+
+const FIELD_LABEL_OVERRIDES = {
+  _id: "ID",
+  regularPrice: "Regular Price",
+  discountPrice: "Discount Price",
+  taxPercent: "Tax %",
+  metaTitle: "SEO Meta Title",
+  metaDescription: "SEO Meta Description",
+  createdAt: "Created",
+  updatedAt: "Updated",
+};
+
 function pickProductId(product) {
-  if (!product) return null;
-  return product._id ?? product.id ?? product.productId ?? null;
+  if (!product) return "";
+  return String(product._id ?? product.id ?? product.productId ?? "").trim();
 }
 
 function normalizeProductPayload(payload) {
@@ -44,6 +75,23 @@ function normalizeProductPayload(payload) {
     return root.product ?? root;
   }
   return root;
+}
+
+function normalizeProductImages(product) {
+  if (!Array.isArray(product?.images)) return [];
+  return product.images
+    .map((image, index) => ({
+      key: image?.key || "",
+      displayOrder: Number(image?.displayOrder ?? index),
+      url: String(image?.url || image?.imageUrl || "").trim(),
+    }))
+    .filter((image) => Boolean(image.key || image.url))
+    .sort((a, b) => a.displayOrder - b.displayOrder);
+}
+
+function formatFieldLabel(key) {
+  if (FIELD_LABEL_OVERRIDES[key]) return FIELD_LABEL_OVERRIDES[key];
+  return key.replace(/([A-Z])/g, " $1").trim();
 }
 
 function formatDateTime(value) {
@@ -59,76 +107,113 @@ function displayCategory(category) {
   return String(category);
 }
 
+function mapFlagsFromProduct(product) {
+  const flags = product?.flags && typeof product.flags === "object" ? product.flags : {};
+  return Object.fromEntries(
+    PRODUCT_FLAG_FIELDS.map(({ key }) => [key, Boolean(flags[key] ?? product?.[key])]),
+  );
+}
+
+function formatFieldValue(key, v) {
+  if (key === "createdAt" || key === "updatedAt") return formatDateTime(v);
+  if (key === "tags") {
+    if (Array.isArray(v)) return v.length ? v.join(", ") : "—";
+    return v != null && String(v).trim() ? String(v) : "—";
+  }
+  if (v != null && typeof v === "object") return JSON.stringify(v, null, 2);
+  return String(v ?? "—");
+}
+
 const AdminProductDetail = () => {
   const navigate = useNavigate();
   const { productId = "" } = useParams();
   const roleGate = localStorage.getItem("role");
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
+  const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [product, setProduct] = useState(null);
-  const [statusMenuAnchor, setStatusMenuAnchor] = useState(null);
-  const [statusSaving, setStatusSaving] = useState(false);
-  const [statusNotice, setStatusNotice] = useState({ type: "", message: "" });
-
-  const loadProduct = useCallback(async () => {
-    const id = productId.trim();
-    if (!id) return;
-    setLoading(true);
-    setError("");
-    try {
-      const { data } = await client.get(`/admin/products/${encodeURIComponent(id)}`);
-      setProduct(normalizeProductPayload(data));
-    } catch (e) {
-      setProduct(null);
-      setError(getApiErrorMessage(e, "Failed to load product."));
-    } finally {
-      setLoading(false);
-    }
-  }, [productId]);
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [activeTab, setActiveTab] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (isAdminAllowed) loadProduct();
-  }, [isAdminAllowed, loadProduct]);
-
-  const handleStatusMenuOpen = (event) => {
-    setStatusNotice({ type: "", message: "" });
-    setStatusMenuAnchor(event.currentTarget);
-  };
-
-  const handleStatusMenuClose = () => {
-    setStatusMenuAnchor(null);
-  };
-
-  const handleStatusChange = async (nextStatus) => {
-    const id = productId.trim();
-    if (!id || !product) return;
-    if (String(nextStatus).toLowerCase() === String(product.status ?? "").toLowerCase()) {
-      handleStatusMenuClose();
+    if (!isAdminAllowed) return;
+    if (!productId.trim()) {
+      setLoading(false);
+      setError("Missing product id.");
       return;
     }
-    setStatusSaving(true);
-    setStatusNotice({ type: "", message: "" });
-    try {
-      const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, { status: nextStatus });
-      const updated = normalizeProductPayload(data);
-      if (updated && typeof updated === "object") {
-        setProduct((prev) => ({ ...prev, ...updated, status: updated.status ?? nextStatus }));
-      } else {
-        setProduct((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      setFeedback({ type: "", message: "" });
+      setProduct(null);
+      try {
+        const { data } = await client.get(`/admin/products/${encodeURIComponent(productId.trim())}`);
+        if (cancelled) return;
+        const fetched = normalizeProductPayload(data);
+        setProduct(fetched && typeof fetched === "object" ? fetched : null);
+        if (!fetched || typeof fetched !== "object") {
+          setError("Unexpected response from server.");
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setProduct(null);
+        setError(getApiErrorMessage(e, "Failed to load product."));
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setStatusNotice({ type: "success", message: `Status set to ${nextStatus}.` });
-      handleStatusMenuClose();
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminAllowed, productId]);
+
+  useEffect(() => {
+    setActiveTab(0);
+  }, [productId]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Soft-delete this product?")) return;
+    setDeleting(true);
+    setFeedback({ type: "", message: "" });
+    try {
+      await client.delete(`/admin/products/${encodeURIComponent(productId.trim())}`);
+      navigate("/admin/products");
     } catch (e) {
-      setStatusNotice({
+      setFeedback({
         type: "error",
-        message: getApiErrorMessage(e, "Could not update status."),
+        message: getApiErrorMessage(e, "Failed to delete product."),
       });
     } finally {
-      setStatusSaving(false);
+      setDeleting(false);
     }
   };
+
+  const { leftEntries, rightEntries } = useMemo(() => {
+    const entries = Object.entries(product || {}).filter(([k]) => !DETAIL_SKIP_KEYS.has(k));
+    entries.push(
+      ["category", displayCategory(product?.category)],
+      ["metaTitle", product?.seo?.metaTitle?.trim() || null],
+      ["metaDescription", product?.seo?.metaDescription?.trim() || null],
+    );
+    const mid = Math.ceil(entries.length / 2);
+    return {
+      leftEntries: entries.slice(0, mid),
+      rightEntries: entries.slice(mid),
+    };
+  }, [product]);
+
+  const variants = useMemo(() => (Array.isArray(product?.variants) ? product.variants : []), [product]);
+  const images = useMemo(() => normalizeProductImages(product), [product]);
+  const productFlags = useMemo(() => mapFlagsFromProduct(product), [product]);
+  const hasImages = images.length > 0;
 
   if (!isAdminAllowed) {
     return (
@@ -142,237 +227,360 @@ const AdminProductDetail = () => {
   }
 
   const id = pickProductId(product);
-  const variants = Array.isArray(product?.variants) ? product.variants : [];
-  const images = Array.isArray(product?.images) ? product.images : [];
+  const displayName = String(product?.name || "Product");
+  const statusLabel = product?.status ? String(product.status) : "—";
+  const categoryLabel = displayCategory(product?.category);
+  const brandLabel = product?.brand ? String(product.brand) : "—";
+
+  const cardSx = {
+    p: { xs: 2, sm: 3 },
+    borderRadius: 2,
+    border: `1px solid ${alpha(forest, 0.1)}`,
+    boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)",
+  };
 
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
-      <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
+
+      <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
         <AdminBreadcrumb
           items={[
             { label: "Dashboard", to: "/admin/dashboard" },
             { label: "Products", to: "/admin/products" },
-            { label: product?.name ? String(product.name) : "Product detail" },
+            { label: loading ? "Product" : displayName },
           ]}
         />
 
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          justifyContent="space-between"
-          alignItems={{ xs: "flex-start", sm: "center" }}
-          spacing={2}
-          sx={{ mb: 2 }}
-        >
-          <Typography variant="h5" sx={{ color: "#19271f", fontWeight: 800 }}>
-            Product detail
-          </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-            <Button
-              variant="text"
-              sx={{ textTransform: "none", fontWeight: 700, color: "#2a4135" }}
-              onClick={() => navigate("/admin/products")}
-            >
-              Back to list
-            </Button>
-            <Button
-              variant="outlined"
-              sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }}
-              onClick={loadProduct}
-              disabled={loading}
-            >
-              Refresh
-            </Button>
-            {id && product ? (
-              <>
-                <Box sx={{ display: "inline-flex", alignItems: "center" }}>
-                  <Button
-                    id="product-status-button"
-                    aria-controls={statusMenuAnchor ? "product-status-menu" : undefined}
-                    aria-haspopup="true"
-                    aria-expanded={statusMenuAnchor ? "true" : undefined}
-                    variant="outlined"
-                    size="small"
-                    onClick={handleStatusMenuOpen}
-                    disabled={statusSaving}
-                    endIcon={<FiChevronDown size={18} />}
-                    sx={{
-                      textTransform: "none",
-                      fontWeight: 700,
-                      color: "#1f2a24",
-                      borderColor: alpha("#0f3828", 0.22),
-                      minWidth: 148,
-                      "&:hover": { borderColor: alpha(accent, 0.55), bgcolor: alpha(accent, 0.06) },
-                    }}
-                  >
-                    {statusSaving ? "Updating…" : product.status ? String(product.status) : "Status"}
-                  </Button>
-                  <Menu
-                    id="product-status-menu"
-                    anchorEl={statusMenuAnchor}
-                    open={Boolean(statusMenuAnchor)}
-                    onClose={handleStatusMenuClose}
-                    slotProps={{ paper: { sx: { minWidth: 200, borderRadius: 2 } } }}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                    transformOrigin={{ vertical: "top", horizontal: "left" }}
-                  >
-                    {STATUS_OPTIONS.map((opt) => (
-                      <MenuItem
-                        key={opt.value}
-                        selected={String(product.status || "").toLowerCase() === opt.value}
-                        disabled={statusSaving}
-                        onClick={() => handleStatusChange(opt.value)}
-                        sx={{ textTransform: "capitalize", fontWeight: 600 }}
-                      >
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Menu>
-                </Box>
-                <Button
-                  variant="contained"
-                  sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
-                  onClick={() => navigate(`/admin/products/${encodeURIComponent(String(id))}/edit`)}
-                >
-                  Edit
-                </Button>
-              </>
-            ) : null}
-          </Stack>
-        </Stack>
-
-        {error ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        ) : null}
-
-        {statusNotice.message ? (
-          <Alert
-            severity={statusNotice.type === "success" ? "success" : "error"}
-            sx={{ mb: 2 }}
-            onClose={() => setStatusNotice({ type: "", message: "" })}
-          >
-            {statusNotice.message}
+        {feedback.message ? (
+          <Alert severity={feedback.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
+            {feedback.message}
           </Alert>
         ) : null}
 
         {loading ? (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 6,
-              borderRadius: 2,
-              border: `1px solid ${alpha("#0f3828", 0.1)}`,
-              display: "flex",
-              justifyContent: "center",
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
             <CircularProgress size={32} sx={{ color: accent }} />
-          </Paper>
-        ) : !product ? (
-          <Alert severity="warning">No product data.</Alert>
-        ) : (
-          <Stack spacing={2}>
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1.5 }}>Overview</Typography>
-              <Stack spacing={1}>
-                {[
-                  ["ID", id ? String(id) : "—"],
-                  ["Name", product.name ?? "—"],
-                  ["Slug", product.slug ?? "—"],
-                  ["Brand", product.brand ?? "—"],
-                  ["Status", product.status ?? "—"],
-                  ["Category", displayCategory(product.category)],
-                  ["Fabric", product.fabric ?? "—"],
-                  ["Regular price", product.regularPrice != null ? String(product.regularPrice) : "—"],
-                  ["Discount price", product.discountPrice != null ? String(product.discountPrice) : "—"],
-                  ["Tax %", product.taxPercent != null ? String(product.taxPercent) : "—"],
-                  ["Created", formatDateTime(product.createdAt)],
-                  ["Updated", formatDateTime(product.updatedAt)],
-                ].map(([label, value]) => (
-                  <Typography key={label} variant="body2" sx={{ color: "#4e5a54" }}>
-                    <Box component="span" sx={{ fontWeight: 700, color: "#2a4135", mr: 1 }}>
-                      {label}:
-                    </Box>
-                    {value}
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : product ? (
+          <Paper elevation={0} sx={cardSx}>
+            <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
+              Product
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", wordBreak: "break-word" }}>
+              {displayName}
+            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ sm: "center" }}
+              spacing={1.5}
+              sx={{ mt: 0.5 }}
+            >
+              <Typography sx={{ color: "#6f7f77", fontWeight: 600, fontSize: 13 }}>
+                Status: {statusLabel} | Brand: {brandLabel} | Category: {categoryLabel}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => id && navigate(`/admin/products/${encodeURIComponent(id)}/edit`)}
+                disabled={!id}
+                sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+              >
+                Edit Product
+              </Button>
+            </Stack>
+
+            <Tabs
+              value={activeTab}
+              onChange={(_, next) => setActiveTab(next)}
+              sx={{
+                mt: 2,
+                mb: 0,
+                minHeight: 44,
+                borderBottom: `1px solid ${alpha(forest, 0.1)}`,
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  minHeight: 44,
+                  color: "#6f7f77",
+                },
+                "& .Mui-selected": { color: "#19271f" },
+                "& .MuiTabs-indicator": { bgcolor: accent, height: 3, borderRadius: "3px 3px 0 0" },
+              }}
+            >
+              <Tab label="Details" />
+              <Tab label={`Variants (${variants.length})`} />
+              <Tab label={hasImages ? `Images (${images.length})` : "Images (none)"} />
+            </Tabs>
+
+            <Divider sx={{ mb: 2 }} />
+
+            {activeTab === 0 ? (
+              <>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={1.25}>
+                      {leftEntries.map(([k, v]) => (
+                        <Box key={k}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                          >
+                            {formatFieldLabel(k)}
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                            {formatFieldValue(k, v)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={1.25}>
+                      {rightEntries.map(([k, v]) => (
+                        <Box key={k}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                          >
+                            {formatFieldLabel(k)}
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                            {formatFieldValue(k, v)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Grid>
+                </Grid>
+
+                <Box
+                  sx={{
+                    mt: 2.5,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: alpha(forest, 0.03),
+                    border: `1px solid ${alpha(forest, 0.1)}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}
+                  >
+                    Description
                   </Typography>
-                ))}
-              </Stack>
-            </Paper>
-
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1 }}>Description</Typography>
-              <Typography variant="body2" sx={{ color: "#4e5a54", whiteSpace: "pre-wrap" }}>
-                {product.description?.trim() ? product.description : "—"}
-              </Typography>
-            </Paper>
-
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1 }}>SEO</Typography>
-              <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                Meta title: {product.seo?.metaTitle || product.metaTitle || "—"}
-              </Typography>
-              <Typography variant="body2" sx={{ color: "#4e5a54", mt: 0.5 }}>
-                Meta description: {product.seo?.metaDescription || product.metaDescription || "—"}
-              </Typography>
-            </Paper>
-
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1.5 }}>Tags</Typography>
-              <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                {Array.isArray(product.tags) ? product.tags.join(", ") : product.tags || "—"}
-              </Typography>
-            </Paper>
-
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}`, overflow: "auto" }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1.5 }}>Variants</Typography>
-              {variants.length === 0 ? (
-                <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                  No variants.
-                </Typography>
-              ) : (
-                <Table size="small">
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: alpha("#ab8a48", 0.08) }}>
-                      <TableCell sx={{ fontWeight: 700 }}>Color</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Hex</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Size</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Stock</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {variants.map((v, i) => (
-                      <TableRow key={v?._id || v?.id || `v-${i}`}>
-                        <TableCell>{v?.color?.name ?? v?.colorName ?? "—"}</TableCell>
-                        <TableCell>{v?.color?.hexCode ?? v?.colorHexCode ?? "—"}</TableCell>
-                        <TableCell>{v?.size ?? "—"}</TableCell>
-                        <TableCell>{v?.stock != null ? String(v.stock) : "—"}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </Paper>
-
-            <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-              <Typography sx={{ fontWeight: 800, color: "#1f2a24", mb: 1.5 }}>Images</Typography>
-              {images.length === 0 ? (
-                <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                  No images.
-                </Typography>
-              ) : (
-                <Stack spacing={1}>
-                  {images.map((img, i) => (
-                    <Typography key={img?.key || i} variant="body2" sx={{ color: "#4e5a54", wordBreak: "break-all" }}>
-                      Order {img?.displayOrder ?? i}: {img?.key || img?.url || "—"}
+                  {product.description?.trim() ? (
+                    <Box
+                      sx={{
+                        color: "#1f2a24",
+                        lineHeight: 1.7,
+                        wordBreak: "break-word",
+                        "& p": { m: 0, mb: 1.25, "&:last-child": { mb: 0 } },
+                        "& ul, & ol": { pl: 2.5, my: 1 },
+                        "& a": { color: accent, fontWeight: 600 },
+                        "& img": { maxWidth: "100%", height: "auto", borderRadius: 1 },
+                        "& table": { width: "100%", borderCollapse: "collapse", my: 1 },
+                        "& th, & td": { border: `1px solid ${alpha(forest, 0.15)}`, p: 1, textAlign: "left" },
+                      }}
+                      dangerouslySetInnerHTML={{ __html: String(product.description) }}
+                    />
+                  ) : (
+                    <Typography variant="body1" sx={{ color: "#1f2a24" }}>
+                      —
                     </Typography>
-                  ))}
-                </Stack>
-              )}
-            </Paper>
-          </Stack>
-        )}
+                  )}
+                </Box>
+
+                <Box
+                  sx={{
+                    mt: 2,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: alpha(forest, 0.03),
+                    border: `1px solid ${alpha(forest, 0.1)}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}
+                  >
+                    Product flags
+                  </Typography>
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={0.5} useFlexGap flexWrap="wrap">
+                    {PRODUCT_FLAG_FIELDS.map(({ key, label }) => (
+                      <FormControlLabel
+                        key={key}
+                        control={
+                          <Checkbox
+                            checked={Boolean(productFlags[key])}
+                            disabled
+                            size="small"
+                            sx={{ color: alpha(accent, 0.6), "&.Mui-checked": { color: accent } }}
+                          />
+                        }
+                        label={label}
+                        sx={{
+                          mr: 2,
+                          "& .MuiFormControlLabel-label": { fontSize: "0.9rem", color: "#2a4135", fontWeight: 600 },
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Box>
+              </>
+            ) : activeTab === 1 ? (
+              <Box sx={{ overflow: "auto" }}>
+                {variants.length === 0 ? (
+                  <Box
+                    sx={{
+                      py: 4,
+                      px: 2,
+                      borderRadius: 2,
+                      bgcolor: alpha(forest, 0.03),
+                      border: `1px dashed ${alpha(forest, 0.15)}`,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, color: "#19271f", mb: 0.5 }}>No variants</Typography>
+                    <Typography variant="body2" sx={{ color: "#6f7f77" }}>
+                      Add color, size, and stock variants from Edit Product.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: alpha(accent, 0.08) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>Color</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Hex</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Size</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Stock</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {variants.map((v, i) => (
+                        <TableRow key={v?._id || v?.id || `v-${i}`}>
+                          <TableCell>{v?.color?.name ?? v?.colorName ?? "—"}</TableCell>
+                          <TableCell>{v?.color?.hexCode ?? v?.colorHexCode ?? "—"}</TableCell>
+                          <TableCell>{v?.size ?? "—"}</TableCell>
+                          <TableCell>{v?.stock != null ? String(v.stock) : "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </Box>
+            ) : (
+              <Box>
+                {hasImages ? (
+                  <Stack spacing={2}>
+                    {images.map((img, i) => (
+                      <Box
+                        key={img.key || img.url || `img-${i}`}
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(forest, 0.1)}`,
+                          bgcolor: alpha(forest, 0.02),
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ color: "#6f7f77", fontWeight: 600, mb: 0.5 }}>
+                          Order {img.displayOrder}
+                          {img.key ? ` · Key: ${img.key}` : ""}
+                        </Typography>
+                        {img.url ? (
+                          <>
+                            <Link
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              variant="body2"
+                              sx={{ color: accent, fontWeight: 600, wordBreak: "break-all", display: "block", mb: 1.5 }}
+                            >
+                              {img.url}
+                            </Link>
+                            <Box
+                              component="a"
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ display: "inline-block", maxWidth: "100%", cursor: "pointer" }}
+                            >
+                              <Box
+                                component="img"
+                                src={img.url}
+                                alt={`${displayName} ${i + 1}`}
+                                sx={{
+                                  maxWidth: "100%",
+                                  maxHeight: 280,
+                                  objectFit: "contain",
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha(forest, 0.12)}`,
+                                  display: "block",
+                                  boxShadow: "0 6px 16px rgba(20, 55, 42, 0.08)",
+                                }}
+                              />
+                            </Box>
+                          </>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: "#6f7f77" }}>
+                            No preview URL — use Edit Product to manage images.
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                    <Typography variant="body2" sx={{ color: "#6f7f77" }}>
+                      Click a URL or image to open in a new tab. To replace images, use Edit Product.
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <Box
+                    sx={{
+                      py: 4,
+                      px: 2,
+                      borderRadius: 2,
+                      bgcolor: alpha(forest, 0.03),
+                      border: `1px dashed ${alpha(forest, 0.15)}`,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, color: "#19271f", mb: 0.5 }}>No images yet</Typography>
+                    <Typography variant="body2" sx={{ color: "#6f7f77", mb: 2 }}>
+                      Upload product images from Edit Product.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => id && navigate(`/admin/products/${encodeURIComponent(id)}/edit`)}
+                      disabled={!id}
+                      sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+                    >
+                      Edit Product
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            <Divider sx={{ mt: 3, mb: 2 }} />
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap spacing={1}>
+              <Typography variant="caption" sx={{ color: "#8a9690", fontWeight: 600 }}>
+                ID: {id || "—"}
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDelete}
+                disabled={deleting}
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                {deleting ? "Deleting…" : "Soft Delete"}
+              </Button>
+            </Stack>
+          </Paper>
+        ) : null}
       </Box>
     </Box>
   );

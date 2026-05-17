@@ -22,9 +22,7 @@ import AdminCategoryGridSections from "../Admin/pages/AdminCategoryGridSections"
 import AdminProductListSectionDetail from "../Admin/pages/AdminProductListSectionDetail";
 import AdminCategoryGridSectionDetail from "../Admin/pages/AdminCategoryGridSectionDetail";
 import AdminProductListSectionCreate from "../Admin/pages/AdminProductListSectionCreate";
-import AdminProductListSectionEdit from "../Admin/pages/AdminProductListSectionEdit";
 import AdminCategoryGridSectionCreate from "../Admin/pages/AdminCategoryGridSectionCreate";
-import AdminCategoryGridSectionEdit from "../Admin/pages/AdminCategoryGridSectionEdit";
 import AdminCategories from "../Admin/pages/AdminCategories";
 import AdminCategoryCreate from "../Admin/pages/AdminCategoryCreate";
 import AdminCategoryDetail from "../Admin/pages/AdminCategoryDetail";
@@ -107,12 +105,13 @@ function AppRoutes() {
         <Route path="/admin/categories/:categoryId/edit" element={<AdminCategoryEdit />} />
         <Route path="/admin/homepage-cms/product-list-sections" element={<AdminProductListSections />} />
         <Route path="/admin/homepage-cms/product-list-sections/create" element={<AdminProductListSectionCreate />} />
+        <Route path="/admin/homepage-cms/product-list-sections/:sectionId/edit" element={<AdminProductListSectionCreate />} />
         <Route path="/admin/homepage-cms/product-list-sections/:sectionId" element={<AdminProductListSectionDetail />} />
-        <Route path="/admin/homepage-cms/product-list-sections/:sectionId/edit" element={<AdminProductListSectionEdit />} />
         <Route path="/admin/homepage-cms/category-grid-sections" element={<AdminCategoryGridSections />} />
         <Route path="/admin/homepage-cms/category-grid-sections/create" element={<AdminCategoryGridSectionCreate />} />
+        <Route path="/admin/homepage-cms/category-grid-sections/:sectionId/edit" element={<AdminCategoryGridSectionCreate />} />
         <Route path="/admin/homepage-cms/category-grid-sections/:sectionId" element={<AdminCategoryGridSectionDetail />} />
-        <Route path="/admin/homepage-cms/category-grid-sections/:sectionId/edit" element={<AdminCategoryGridSectionEdit />} />
+        <Route path="/admin/homepage-cms/:bannerId/edit" element={<AdminBanners />} />
         <Route path="/admin/homepage-cms/:bannerId" element={<AdminBannerDetail />} />
         <Route path="/admin/homepage-cms/:bannerId/images" element={<AdminBannerImages />} />
       </Route>

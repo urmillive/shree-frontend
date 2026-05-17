@@ -28,6 +28,16 @@ const accent = "#ab8a48";
 
 const getCategoryId = (category) => String(category?._id || category?.id || category?._uiId || "").trim();
 
+const formatDate = (value) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleString();
+};
+
+const getCategoryTimestamp = (category, field) =>
+  category?.[field] ?? category?.[field === "createdAt" ? "created_at" : "updated_at"];
+
 const AdminCategories = () => {
   const navigate = useNavigate();
   const roleGate = localStorage.getItem("role");
@@ -118,39 +128,40 @@ const AdminCategories = () => {
               <TableRow sx={{ bgcolor: alpha("#ab8a48", 0.08) }}>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Name</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Path</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Created At</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Level</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Display Order</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Image</TableCell>
+                {/* <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Updated At</TableCell> */}
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} sx={{ color: accent }} />
                   </TableCell>
                 </TableRow>
               ) : filteredRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: "#6f7f77" }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: "#6f7f77" }}>
                     No categories found.
                   </TableCell>
                 </TableRow>
               ) : (
                 filteredRows.map((category, index) => {
                   const id = getCategoryId(category);
-                  const hasImage = Boolean(category?.imageUrl || category?.image?.url || category?.imageKey || category?.image?.key);
                   return (
                     <TableRow key={id || `category-${index}`} hover sx={{ cursor: id ? "pointer" : "default" }} onClick={() => id && navigate(`/admin/categories/${encodeURIComponent(id)}`)}>
                       <TableCell sx={{ color: "#1f2a24", fontWeight: 600 }}>{category?.name || "-"}</TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>{category?._uiPathLabel || "-"}</TableCell>
+                      <TableCell sx={{ color: "#1f2a24", whiteSpace: "nowrap" }}>{formatDate(getCategoryTimestamp(category, "createdAt"))}</TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>{category?.level ?? 0}</TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>
                         <Chip label={category?.isActive ? "active" : "inactive"} size="small" color={category?.isActive ? "success" : "default"} />
                       </TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>{category?.displayOrder ?? 0}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{hasImage ? "Yes" : "No"}</TableCell>
+                      {/* <TableCell sx={{ color: "#1f2a24", whiteSpace: "nowrap" }}>{formatDate(getCategoryTimestamp(category, "updatedAt"))}</TableCell> */}
                     </TableRow>
                   );
                 })

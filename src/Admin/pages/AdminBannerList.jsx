@@ -154,11 +154,11 @@ const AdminBannerList = () => {
             <TableHead>
               <TableRow sx={{ bgcolor: alpha("#ab8a48", 0.08) }}>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Title</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Placement</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Display Order</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Image Key</TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Created At</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Placement</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Display Order</TableCell>
+                {/* <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Image Key</TableCell> */}
+                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Status</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -184,15 +184,15 @@ const AdminBannerList = () => {
                           {formatText(banner?.title)}
                         </Typography>
                       </TableCell>
+                      <TableCell sx={{ color: "#1f2a24" }}>{formatDate(banner?.createdAt)}</TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>{formatText(banner?.placement)}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{banner?.isActive ? "Active" : "Inactive"}</TableCell>
                       <TableCell sx={{ color: "#1f2a24" }}>{banner?.displayOrder ?? 0}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24", maxWidth: 280 }}>
+                      <TableCell sx={{ color: "#1f2a24" }}>{banner?.isActive ? "Active" : "Inactive"}</TableCell>
+                      {/* <TableCell sx={{ color: "#1f2a24", maxWidth: 280 }}>
                         <Typography variant="body2" sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {formatText(banner?.image?.key)}
                         </Typography>
-                      </TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{formatDate(banner?.createdAt)}</TableCell>
+                      </TableCell> */}
                     </TableRow>
                   );
                 })

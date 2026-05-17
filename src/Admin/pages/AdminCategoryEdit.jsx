@@ -1,14 +1,38 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  MenuItem,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
 import { getApiErrorMessage } from "../../utils/apiError";
-import { fetchAdminCategories, fetchAdminCategoryById, flattenCategories, normalizeCategoryPayload, updateAdminCategory } from "../services/adminCategoriesService";
+import {
+  canBeParentCategory,
+  fetchAdminCategories,
+  fetchAdminCategoryById,
+  flattenCategories,
+  getCategoryLevel,
+  getCategoryParentId,
+  MAX_CATEGORY_DEPTH,
+  normalizeCategoryPayload,
+  updateAdminCategory,
+  uploadAdminCategoryImageFromFile,
+} from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
+const SECTIONS = ["Basic Info", "SEO", "Image"];
+
 const getCategoryId = (category) => String(category?._id || category?.id || category?._uiId || "").trim();
 
 const defaultEditForm = {
@@ -16,83 +40,205 @@ const defaultEditForm = {
   description: "",
   parent: "",
   displayOrder: 0,
+  isActive: true,
   metaTitle: "",
   metaDescription: "",
 };
 
+function mapCategoryToForm(category) {
+  if (!category) return defaultEditForm;
+  return {
+    name: String(category?.name || "").trim(),
+    description: String(category?.description || ""),
+    parent: getCategoryParentId(category),
+    displayOrder: category?.displayOrder ?? 0,
+    isActive: category?.isActive !== false,
+    metaTitle: String(category?.seo?.metaTitle || "").trim(),
+    metaDescription: String(category?.seo?.metaDescription || "").trim(),
+  };
+}
+
+function normalizeCategoryImage(category) {
+  const url = String(category?.imageUrl || category?.image?.url || "").trim();
+  const key = String(category?.imageKey || category?.image?.key || "").trim();
+  if (!url && !key) return null;
+  return { url, key };
+}
+
 const AdminCategoryEdit = () => {
   const navigate = useNavigate();
-  const { categoryId = "" } = useParams();
+  const { categoryId: editRouteCategoryId = "" } = useParams();
+  const categoryId = String(editRouteCategoryId || "").trim();
   const roleGate = localStorage.getItem("role");
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
+
+  const [form, setForm] = useState(defaultEditForm);
   const [category, setCategory] = useState(null);
   const [allCategories, setAllCategories] = useState([]);
-  const [editForm, setEditForm] = useState(defaultEditForm);
+  const [loadingCategory, setLoadingCategory] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [error, setError] = useState("");
+  const [imageError, setImageError] = useState("");
+  const [imageSuccess, setImageSuccess] = useState("");
+  const [stagingFile, setStagingFile] = useState(null);
+  const imageInputRef = useRef(null);
 
-  const loadData = async () => {
-    if (!categoryId.trim()) return;
-    setLoading(true);
-    setFeedback({ type: "", message: "" });
+  const onFormChange = (key, value) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const loadCategoryForEdit = useCallback(async () => {
+    if (!categoryId) return;
+    setLoadingCategory(true);
+    setError("");
+    setImageError("");
+    setImageSuccess("");
     try {
-      const [{ data: categoryData }, { data: listData }] = await Promise.all([fetchAdminCategoryById(categoryId.trim()), fetchAdminCategories()]);
+      const [{ data: categoryData }, { data: listData }] = await Promise.all([
+        fetchAdminCategoryById(categoryId),
+        fetchAdminCategories(),
+      ]);
       const fetched = normalizeCategoryPayload(categoryData);
+      if (!fetched) {
+        setError("Category not found.");
+        setCategory(null);
+        return;
+      }
       setCategory(fetched);
       setAllCategories(flattenCategories(listData));
-      setEditForm({
-        name: fetched?.name || "",
-        description: fetched?.description || "",
-        parent: fetched?.parent || "",
-        displayOrder: fetched?.displayOrder ?? 0,
-        metaTitle: fetched?.seo?.metaTitle || "",
-        metaDescription: fetched?.seo?.metaDescription || "",
-      });
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message: getApiErrorMessage(error, "Failed to load category."),
-      });
+      setForm(mapCategoryToForm(fetched));
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to load category."));
     } finally {
-      setLoading(false);
+      setLoadingCategory(false);
+    }
+  }, [categoryId]);
+
+  useEffect(() => {
+    if (isAdminAllowed) loadCategoryForEdit();
+  }, [isAdminAllowed, loadCategoryForEdit]);
+
+  const onPickImage = (event) => {
+    const file = Array.from(event.target.files || []).find((f) => f && String(f.type || "").startsWith("image/"));
+    if (!file) return;
+    setStagingFile(file);
+    setImageError("");
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
     }
   };
 
-  useEffect(() => {
-    if (isAdminAllowed) loadData();
-  }, [isAdminAllowed, categoryId]);
+  const clearStagingFile = () => {
+    setStagingFile(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  };
 
-  const handleUpdate = async () => {
-    if (!editForm.name.trim()) {
-      setFeedback({ type: "error", message: "Category name is required." });
+  const handleUploadQueuedImage = async () => {
+    if (!categoryId) {
+      setImageError("Category id missing. Reload the page.");
       return;
     }
-    setUpdating(true);
-    setFeedback({ type: "", message: "" });
+    if (!stagingFile) {
+      setImageError("Add an image to the queue before uploading.");
+      return;
+    }
+
+    setImageError("");
+    setImageSuccess("");
+    setUploadingImage(true);
+    const fileSnapshot = stagingFile;
+
     try {
-      const payload = {
-        name: editForm.name.trim(),
-        description: editForm.description.trim() || undefined,
-        displayOrder: Number(editForm.displayOrder) || 0,
-        parent: editForm.parent || null,
-      };
-      const metaTitle = editForm.metaTitle.trim();
-      const metaDescription = editForm.metaDescription.trim();
-      if (metaTitle || metaDescription) {
-        payload.seo = {};
-        if (metaTitle) payload.seo.metaTitle = metaTitle;
-        if (metaDescription) payload.seo.metaDescription = metaDescription;
+      const updated = await uploadAdminCategoryImageFromFile(categoryId, fileSnapshot);
+      if (updated) {
+        setCategory(updated);
+      } else {
+        await loadCategoryForEdit();
       }
-      await updateAdminCategory(categoryId.trim(), payload);
-      navigate(`/admin/categories/${encodeURIComponent(categoryId.trim())}`);
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message: getApiErrorMessage(error, "Failed to update category."),
-      });
+      clearStagingFile();
+      setImageSuccess("Image uploaded and confirmed.");
+    } catch (err) {
+      setImageError(getApiErrorMessage(err, "Failed to upload image."));
     } finally {
-      setUpdating(false);
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+    setError("");
+    setImageError("");
+    setImageSuccess("");
+
+    if (!form.name.trim()) {
+      setError("Category name is required.");
+      return;
+    }
+    if (form.parent) {
+      const parent = allCategories.find((item) => getCategoryId(item) === form.parent);
+      if (parent && !canBeParentCategory(parent)) {
+        setError(
+          `Only ${MAX_CATEGORY_DEPTH} category levels are allowed (Level 1 → Level 2 → Level 3). Choose a Level 1 or Level 2 parent.`,
+        );
+        return;
+      }
+    }
+
+    const stagingSnapshot = stagingFile;
+    const payload = {
+      name: form.name.trim(),
+      description: form.description.trim() || undefined,
+      displayOrder: Number(form.displayOrder) || 0,
+      parent: form.parent || null,
+      isActive: Boolean(form.isActive),
+    };
+    const metaTitle = form.metaTitle.trim();
+    const metaDescription = form.metaDescription.trim();
+    if (metaTitle || metaDescription) {
+      payload.seo = {};
+      if (metaTitle) payload.seo.metaTitle = metaTitle;
+      if (metaDescription) payload.seo.metaDescription = metaDescription;
+    }
+
+    setSaving(true);
+    let imageUploadError = "";
+
+    try {
+      const { data } = await updateAdminCategory(categoryId, payload);
+      const updated = normalizeCategoryPayload(data) ?? category;
+      let mergedCategory = updated;
+
+      if (categoryId && stagingSnapshot) {
+        setUploadingImage(true);
+        try {
+          const withImage = await uploadAdminCategoryImageFromFile(categoryId, stagingSnapshot);
+          if (withImage) mergedCategory = withImage;
+          clearStagingFile();
+        } catch (imgErr) {
+          imageUploadError = getApiErrorMessage(imgErr, "Category saved but image upload failed.");
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      if (mergedCategory) {
+        setCategory(mergedCategory);
+        setForm(mapCategoryToForm(mergedCategory));
+      }
+
+      if (imageUploadError) {
+        setImageError(imageUploadError);
+        return;
+      }
+
+      navigate(`/admin/categories/${encodeURIComponent(categoryId)}`);
+    } catch (err) {
+      setError(getApiErrorMessage(err, "Failed to update category."));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -100,66 +246,291 @@ const AdminCategoryEdit = () => {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 2, bgcolor: pageBg }}>
         <Typography color="text.secondary">You do not have access to this page.</Typography>
+        <Button sx={{ mt: 2 }} onClick={() => navigate("/admin/dashboard")}>
+          Back
+        </Button>
       </Box>
     );
   }
 
   const currentId = getCategoryId(category);
-  const parentOptions = allCategories.filter((item) => getCategoryId(item) && getCategoryId(item) !== currentId);
+  const parentOptions = allCategories.filter(
+    (item) => getCategoryId(item) && getCategoryId(item) !== currentId && canBeParentCategory(item),
+  );
+  const currentImage = normalizeCategoryImage(category);
 
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
-      <Box sx={{ maxWidth: 1120, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
+      <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
         <AdminBreadcrumb
           items={[
             { label: "Dashboard", to: "/admin/dashboard" },
             { label: "Categories", to: "/admin/categories" },
-            { label: "Category Detail", to: `/admin/categories/${encodeURIComponent(categoryId.trim())}` },
+            { label: "Category", to: `/admin/categories/${encodeURIComponent(categoryId)}` },
             { label: "Edit" },
           ]}
         />
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 2 }}>
-          <Typography variant="h5" sx={{ color: "#19271f", fontWeight: 800 }}>
-            Edit Category
-          </Typography>
-          <Button variant="text" sx={{ textTransform: "none", fontWeight: 700, color: "#2a4135" }} onClick={() => navigate(`/admin/categories/${encodeURIComponent(categoryId.trim())}`)}>
-            Back to detail
-          </Button>
-        </Stack>
 
-        {feedback.message ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {feedback.message}
-          </Alert>
-        ) : null}
-
-        {loading ? (
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-            <Typography color="text.secondary">Loading category...</Typography>
-          </Paper>
-        ) : (
-          <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-            <Stack spacing={1.25}>
-              <TextField label="Name" size="small" value={editForm.name} onChange={(event) => setEditForm((prev) => ({ ...prev, name: event.target.value }))} />
-              <TextField label="Description" size="small" value={editForm.description} onChange={(event) => setEditForm((prev) => ({ ...prev, description: event.target.value }))} />
-              <TextField select label="Parent" size="small" value={editForm.parent || ""} onChange={(event) => setEditForm((prev) => ({ ...prev, parent: event.target.value }))}>
-                <MenuItem value="">Root category</MenuItem>
-                {parentOptions.map((item) => (
-                  <MenuItem key={`parent-${getCategoryId(item)}`} value={getCategoryId(item)}>
-                    {item?._uiPathLabel || item?.name || getCategoryId(item)}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField label="Display Order" type="number" size="small" value={editForm.displayOrder} onChange={(event) => setEditForm((prev) => ({ ...prev, displayOrder: event.target.value }))} />
-              <TextField label="SEO Meta Title" size="small" value={editForm.metaTitle} onChange={(event) => setEditForm((prev) => ({ ...prev, metaTitle: event.target.value }))} />
-              <TextField label="SEO Meta Description" size="small" value={editForm.metaDescription} onChange={(event) => setEditForm((prev) => ({ ...prev, metaDescription: event.target.value }))} />
-              <Button variant="contained" onClick={handleUpdate} disabled={updating} sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}>
-                {updating ? "Updating..." : "Save Changes"}
-              </Button>
+        <Paper
+          component="form"
+          onSubmit={handleSave}
+          elevation={0}
+          sx={{
+            p: { xs: 2, sm: 3 },
+            borderRadius: 3,
+            border: `1px solid ${alpha("#0f3828", 0.1)}`,
+            boxShadow: "0 12px 30px rgba(20, 55, 42, 0.08)",
+          }}
+        >
+          <Stack spacing={1.1} sx={{ mb: 2.2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: "#1f2a24" }}>
+              Edit Category
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#5a6761" }}>
+              Update catalog fields and replace the category image in one form.
+            </Typography>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ pt: 0.4 }}>
+              {SECTIONS.map((section, index) => (
+                <Chip
+                  key={section}
+                  label={`${index + 1}. ${section}`}
+                  size="small"
+                  sx={{
+                    bgcolor: alpha(accent, 0.1),
+                    color: "#2a4135",
+                    fontWeight: 700,
+                    border: `1px solid ${alpha(accent, 0.2)}`,
+                  }}
+                />
+              ))}
             </Stack>
-          </Paper>
-        )}
+          </Stack>
+
+          {loadingCategory ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+              <CircularProgress size={32} sx={{ color: accent }} />
+            </Box>
+          ) : (
+            <>
+              <Stack spacing={1.75}>
+                <TextField
+                  label="Name"
+                  fullWidth
+                  size="small"
+                  required
+                  value={form.name}
+                  onChange={(e) => onFormChange("name", e.target.value)}
+                />
+                <TextField
+                  label="Description"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  size="small"
+                  value={form.description}
+                  onChange={(e) => onFormChange("description", e.target.value)}
+                />
+                <TextField
+                  select
+                  label="Parent (optional)"
+                  fullWidth
+                  size="small"
+                  value={form.parent}
+                  onChange={(e) => onFormChange("parent", e.target.value)}
+                >
+                  <MenuItem value="">Level 1 — root category</MenuItem>
+                  {parentOptions.map((item) => {
+                    const id = getCategoryId(item);
+                    const level = getCategoryLevel(item);
+                    return (
+                      <MenuItem key={`parent-${id}`} value={id}>
+                        Level {level + 1} — {item?._uiPathLabel || item?.name || id}
+                      </MenuItem>
+                    );
+                  })}
+                </TextField>
+                <Typography variant="caption" sx={{ color: "#5a6761", mt: -1 }}>
+                  Up to {MAX_CATEGORY_DEPTH} levels: Level 1 (root), Level 2, and Level 3. Level 3 categories cannot have
+                  children.
+                </Typography>
+                <TextField
+                  label="Display Order"
+                  type="number"
+                  fullWidth
+                  size="small"
+                  value={form.displayOrder}
+                  onChange={(e) => onFormChange("displayOrder", e.target.value)}
+                />
+                <TextField
+                  select
+                  label="Status"
+                  fullWidth
+                  size="small"
+                  value={form.isActive ? "active" : "inactive"}
+                  onChange={(e) => onFormChange("isActive", e.target.value === "active")}
+                >
+                  <MenuItem value="active">active</MenuItem>
+                  <MenuItem value="inactive">inactive</MenuItem>
+                </TextField>
+                <TextField
+                  label="SEO Meta Title"
+                  fullWidth
+                  size="small"
+                  value={form.metaTitle}
+                  onChange={(e) => onFormChange("metaTitle", e.target.value)}
+                />
+                <TextField
+                  label="SEO Meta Description"
+                  fullWidth
+                  size="small"
+                  value={form.metaDescription}
+                  onChange={(e) => onFormChange("metaDescription", e.target.value)}
+                />
+              </Stack>
+
+              {categoryId ? (
+                <Box sx={{ mt: 2.5 }}>
+                  <Typography sx={{ mb: 1.1, fontWeight: 800, color: "#1f2a24" }}>Category image</Typography>
+                  <Typography variant="body2" sx={{ mb: 1.2, color: "#5a6761" }}>
+                    Queue a new image to replace the current one. It uploads when you save, or use Upload queued image to
+                    upload without saving other fields.
+                  </Typography>
+                  <Stack spacing={1.2}>
+                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+                      <Button
+                        variant="outlined"
+                        component="label"
+                        sx={{ textTransform: "none", borderColor: alpha("#0f3828", 0.2), color: "#1f2a24" }}
+                      >
+                        Choose image
+                        <input ref={imageInputRef} hidden type="file" accept="image/*" onChange={onPickImage} />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="contained"
+                        onClick={handleUploadQueuedImage}
+                        disabled={uploadingImage || saving || !stagingFile}
+                        sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, boxShadow: "none", "&:hover": { bgcolor: "#8f723c" } }}
+                      >
+                        {uploadingImage ? "Uploading…" : "Upload queued image"}
+                      </Button>
+                      {stagingFile ? (
+                        <Button type="button" variant="text" onClick={clearStagingFile} sx={{ textTransform: "none", fontWeight: 700 }}>
+                          Clear queue
+                        </Button>
+                      ) : null}
+                    </Stack>
+                    {stagingFile ? (
+                      <Paper
+                        elevation={0}
+                        sx={{ p: 1.1, borderRadius: 2, border: `1px dashed ${alpha(accent, 0.45)}`, bgcolor: alpha(accent, 0.04) }}
+                      >
+                        <Typography variant="body2" sx={{ color: "#2a4135", wordBreak: "break-all" }}>
+                          Queued: {stagingFile.name}
+                        </Typography>
+                      </Paper>
+                    ) : null}
+                    {currentImage ? (
+                      <Paper
+                        elevation={0}
+                        sx={{ p: 1.2, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.12)}`, bgcolor: "#fcfcfc" }}
+                      >
+                        <Stack spacing={1}>
+                          <Typography variant="caption" sx={{ color: "#5a6761", fontWeight: 700 }}>
+                            On server
+                          </Typography>
+                          {currentImage.key ? (
+                            <Typography variant="caption" sx={{ color: "#5a6761", wordBreak: "break-all" }}>
+                              {currentImage.key}
+                            </Typography>
+                          ) : null}
+                          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                            {currentImage.url ? (
+                              <>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  component="a"
+                                  href={currentImage.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  sx={{ textTransform: "none" }}
+                                >
+                                  Open
+                                </Button>
+                                <Box
+                                  component="img"
+                                  src={currentImage.url}
+                                  alt={category?.name || "Category"}
+                                  sx={{
+                                    maxWidth: 120,
+                                    maxHeight: 80,
+                                    objectFit: "contain",
+                                    borderRadius: 1,
+                                    border: `1px solid ${alpha("#0f3828", 0.12)}`,
+                                  }}
+                                />
+                              </>
+                            ) : null}
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    ) : (
+                      <Typography variant="body2" sx={{ color: "#5a6761" }}>
+                        No image on server yet.
+                      </Typography>
+                    )}
+                  </Stack>
+                </Box>
+              ) : null}
+            </>
+          )}
+
+          {error ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
+          ) : null}
+          {imageError ? (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {imageError}
+            </Alert>
+          ) : null}
+          {imageSuccess ? (
+            <Alert severity="success" sx={{ mt: 2 }}>
+              {imageSuccess}
+            </Alert>
+          ) : null}
+
+          <Stack direction="row" gap={2} sx={{ mt: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate(`/admin/categories/${encodeURIComponent(categoryId)}`)}
+              sx={{ textTransform: "none", fontWeight: 700, borderColor: alpha("#0f3828", 0.25), color: "#1f2a24" }}
+            >
+              Discard changes
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={saving || loadingCategory || uploadingImage}
+              sx={{
+                textTransform: "none",
+                fontWeight: 800,
+                bgcolor: accent,
+                boxShadow: "none",
+                "&:hover": { bgcolor: "#8f723c", boxShadow: "0 6px 18px rgba(171, 138, 72, 0.35)" },
+              }}
+            >
+              {saving
+                ? stagingFile
+                  ? "Saving & uploading image..."
+                  : "Saving..."
+                : "Save changes"}
+            </Button>
+          </Stack>
+        </Paper>
       </Box>
     </Box>
   );
