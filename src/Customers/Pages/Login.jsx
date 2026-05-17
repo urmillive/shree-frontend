@@ -26,6 +26,7 @@ import client, {
 } from "../../Setup/Axios";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
+import { useCart } from "../context/CartContext";
 const authLayout = {
   card: {
     borderRadius: 4,

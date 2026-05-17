@@ -196,36 +196,35 @@ function UserAccountMenu({ anchorEl, open, onClose, loggedIn, loggingOut, onNavi
       transformOrigin={{ vertical: "top", horizontal: "right" }}
       slotProps={{ paper: { sx: menuPaperSx } }}
     >
-      {loggedIn ? (
-        <>
-          {accountLinks.map(({ label, to, icon: Icon }) => (
-            <MenuItem key={to} onClick={() => onNavigate(to)} sx={menuItemSx}>
-              <Icon size={17} />
-              {label}
-            </MenuItem>
-          ))}
-          <Divider sx={{ my: 0.5 }} />
-          <MenuItem
-            disabled={loggingOut}
-            onClick={() => void onLogout()}
-            sx={{ ...menuItemSx, color: colors.primary }}
-          >
-            <FiLogOut size={17} />
-            {loggingOut ? "Signing out…" : "Log out"}
-          </MenuItem>
-        </>
-      ) : (
-        <>
-          <MenuItem onClick={() => onNavigate("/login")} sx={menuItemSx}>
-            <FiLogIn size={17} />
-            Sign in
-          </MenuItem>
-          <MenuItem onClick={() => onNavigate("/signup")} sx={menuItemSx}>
-            <FiUserPlus size={17} />
-            Create account
-          </MenuItem>
-        </>
-      )}
+      {loggedIn
+        ? [
+            ...accountLinks.map(({ label, to, icon: Icon }) => (
+              <MenuItem key={to} onClick={() => onNavigate(to)} sx={menuItemSx}>
+                <Icon size={17} />
+                {label}
+              </MenuItem>
+            )),
+            <Divider key="account-divider" sx={{ my: 0.5 }} />,
+            <MenuItem
+              key="logout"
+              disabled={loggingOut}
+              onClick={() => void onLogout()}
+              sx={{ ...menuItemSx, color: colors.primary }}
+            >
+              <FiLogOut size={17} />
+              {loggingOut ? "Signing out…" : "Log out"}
+            </MenuItem>,
+          ]
+        : [
+            <MenuItem key="login" onClick={() => onNavigate("/login")} sx={menuItemSx}>
+              <FiLogIn size={17} />
+              Sign in
+            </MenuItem>,
+            <MenuItem key="signup" onClick={() => onNavigate("/signup")} sx={menuItemSx}>
+              <FiUserPlus size={17} />
+              Create account
+            </MenuItem>,
+          ]}
     </Menu>
   );
 }
