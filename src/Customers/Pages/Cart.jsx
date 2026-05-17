@@ -13,9 +13,10 @@ import {
   Typography,
 } from "@mui/material";
 import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { alpha } from "@mui/material/styles";
 import { getStoredAccessToken } from "../../Setup/Axios";
+import { useVerification } from "../../context/VerificationContext";
 import { useCart } from "../context/CartContext";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { colors } from "../../theme/theme";
@@ -39,7 +40,9 @@ function TotalsLine({ label, value, positive = false }) {
 }
 
 export default function Cart() {
+  const navigate = useNavigate();
   const [actionError, setActionError] = useState("");
+  const { needsVerification, openVerificationWarning } = useVerification();
   const {
     cart,
     loading,
@@ -49,6 +52,18 @@ export default function Cart() {
     clearWholeCart,
   } = useCart();
   const loggedIn = Boolean(getStoredAccessToken());
+
+  const handleProceedToCheckout = () => {
+    if (!loggedIn) {
+      navigate("/login", { state: { from: { pathname: "/checkout" } } });
+      return;
+    }
+    if (needsVerification) {
+      openVerificationWarning();
+      return;
+    }
+    navigate("/checkout");
+  };
 
   const handleUpdateQty = async (itemId, nextQty) => {
     if (!itemId || nextQty < 1) return;
@@ -180,11 +195,10 @@ export default function Cart() {
                     </Typography>
                   </Stack>
                   <Button
-                    component={RouterLink}
-                    to={loggedIn ? "/checkout" : "/login"}
-                    state={loggedIn ? undefined : { from: { pathname: "/checkout" } }}
+                    type="button"
                     variant="contained"
                     fullWidth
+                    onClick={handleProceedToCheckout}
                     sx={{ mt: 1, textTransform: "none", fontWeight: 700, bgcolor: colors.buttonBackground, color: colors.buttonText }}
                   >
                     {loggedIn ? "Proceed to checkout" : "Sign in to checkout"}

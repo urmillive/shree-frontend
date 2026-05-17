@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMoreVertical, FiPackage, FiRotateCcw, FiCheck, FiX } from "react-icons/fi";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
 import { useToast } from "../../context/ToastContext";
+import { useVerification } from "../../context/VerificationContext";
 import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha, blackAlpha, whiteAlpha } from "../../theme/theme";
 
@@ -505,6 +506,7 @@ const normalizeMobileDigits = (value) => String(value ?? "").replace(/\D/g, "").
 const Profile = () => {
   const navigate = useNavigate();
   const { showSuccess, showError } = useToast();
+  const { refreshVerification } = useVerification();
   const [searchParams, setSearchParams] = useSearchParams();
   const isEditing = searchParams.get("edit") === "true";
   const [profile, setProfile] = useState(null);
@@ -540,7 +542,9 @@ const Profile = () => {
       setLoading(true);
       setError("");
       const response = await client.get("/users/me");
-      setProfile(response?.data?.data?.user || null);
+      const user = response?.data?.data?.user || null;
+      setProfile(user);
+      await refreshVerification();
     } catch (err) {
       if (err?.response?.status === 401) {
         navigate("/login");
@@ -551,16 +555,18 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, refreshVerification]);
 
   const refreshProfile = useCallback(async () => {
     try {
       const response = await client.get("/users/me");
-      setProfile(response?.data?.data?.user || null);
+      const user = response?.data?.data?.user || null;
+      setProfile(user);
+      await refreshVerification();
     } catch {
       /* keep existing profile on silent refresh failure */
     }
-  }, []);
+  }, [refreshVerification]);
 
   useEffect(() => {
     loadProfile();
@@ -646,6 +652,7 @@ const Profile = () => {
       const user = res?.data?.data?.user;
       if (user) {
         setProfile(user);
+        await refreshVerification();
       } else {
         await refreshProfile();
       }
@@ -704,6 +711,7 @@ const Profile = () => {
       const user = res?.data?.data?.user;
       if (user) {
         setProfile(user);
+        await refreshVerification();
       } else {
         await refreshProfile();
       }

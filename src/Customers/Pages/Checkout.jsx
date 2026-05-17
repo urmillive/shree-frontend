@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -20,6 +20,7 @@ import client from "../../Setup/Axios";
 import { colors } from "../../theme/theme";
 import { extractAddressesFromMeResponse, getAddressId } from "../../utils/addressesApi";
 import { useCart } from "../context/CartContext";
+import { useVerification } from "../../context/VerificationContext";
 import { loadRazorpayScript } from "../services/loadRazorpayScript";
 import { getApiErrorMessage } from "../../utils/apiError";
 import {
@@ -36,6 +37,8 @@ const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR",
 export default function Checkout() {
   const navigate = useNavigate();
   const { cart, loading: cartLoading, reloadCart } = useCart();
+  const { needsVerification, loading: verificationLoading, openVerificationWarning } = useVerification();
+  const warnedCheckoutRef = useRef(false);
 
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(true);
@@ -82,6 +85,12 @@ export default function Checkout() {
   useEffect(() => {
     void loadAddresses();
   }, [loadAddresses]);
+
+  useEffect(() => {
+    if (verificationLoading || !needsVerification || warnedCheckoutRef.current) return;
+    warnedCheckoutRef.current = true;
+    openVerificationWarning();
+  }, [verificationLoading, needsVerification, openVerificationWarning]);
 
   useEffect(() => {
     if (cartLoading) return;
@@ -160,6 +169,11 @@ export default function Checkout() {
 
   const handlePlaceOrder = async () => {
     setSubmitError("");
+    if (needsVerification) {
+      openVerificationWarning();
+      setSubmitError("Verify your email or mobile number on your profile before placing an order.");
+      return;
+    }
     if (!addressId) {
       setSubmitError("Choose a delivery address.");
       return;
@@ -199,6 +213,18 @@ export default function Checkout() {
           </Typography>
 
           {submitError ? <Alert severity="error">{submitError}</Alert> : null}
+          {needsVerification ? (
+            <Alert
+              severity="warning"
+              action={
+                <Button color="inherit" size="small" onClick={openVerificationWarning} sx={{ fontWeight: 700 }}>
+                  Verify now
+                </Button>
+              }
+            >
+              Verify your email or mobile number before placing an order.
+            </Alert>
+          ) : null}
           {addressesError ? <Alert severity="warning">{addressesError}</Alert> : null}
 
           {showSkeleton ? (
@@ -321,7 +347,7 @@ export default function Checkout() {
                 </Button>
                 <Button
                   variant="contained"
-                  disabled={placing || !addresses.length || !addressId}
+                  disabled={placing || !addresses.length || !addressId || needsVerification}
                   onClick={() => void handlePlaceOrder()}
                   sx={{ textTransform: "none", fontWeight: 700, bgcolor: colors.buttonBackground, color: colors.buttonText }}
                 >
