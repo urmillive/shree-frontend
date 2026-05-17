@@ -15,6 +15,7 @@ import {
 import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
 
@@ -106,7 +107,7 @@ const AdminReturnDetail = () => {
       } catch (e) {
         if (cancelled) return;
         setReturnData(null);
-        setError(e?.response?.data?.message || e?.message || "Failed to load return details.");
+        setError(getApiErrorMessage(e, "Failed to load return details."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -166,7 +167,7 @@ const AdminReturnDetail = () => {
       setActionSuccess(`Return ${status} successfully.`);
       if (status === "approved") setRejectionReasonDraft("");
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || `Failed to ${status} return.`);
+      setActionError(getApiErrorMessage(e, `Failed to ${status} return.`));
     } finally {
       setSaving(false);
     }
@@ -213,7 +214,7 @@ const AdminReturnDetail = () => {
         );
       }
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to initiate refund.");
+      setActionError(getApiErrorMessage(e, "Failed to initiate refund."));
     } finally {
       setRefundSaving(false);
     }

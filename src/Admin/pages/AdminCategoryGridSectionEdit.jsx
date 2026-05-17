@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -92,7 +93,7 @@ const AdminCategoryGridSectionEdit = () => {
         setMarkedForRemoval([]);
       }
     } catch (error) {
-      setFeedback({ type: "error", message: error?.response?.data?.message || error?.message || "Failed to load section." });
+      setFeedback({ type: "error", message: getApiErrorMessage(error, "Failed to load section.") });
     } finally {
       setLoading(false);
     }
@@ -173,7 +174,7 @@ const AdminCategoryGridSectionEdit = () => {
         });
         await loadSection();
       } catch (error) {
-        setFeedback({ type: "error", message: error?.response?.data?.message || error?.message || "Failed to update section." });
+        setFeedback({ type: "error", message: getApiErrorMessage(error, "Failed to update section.") });
       }
     });
   };
@@ -185,7 +186,7 @@ const AdminCategoryGridSectionEdit = () => {
         await client.delete(`/admin/sections/${encodeURIComponent(sectionId.trim())}`);
         navigate("/admin/homepage-cms/category-grid-sections");
       } catch (error) {
-        setFeedback({ type: "error", message: error?.response?.data?.message || error?.message || "Failed to delete section." });
+        setFeedback({ type: "error", message: getApiErrorMessage(error, "Failed to delete section.") });
       }
     });
   };

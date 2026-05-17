@@ -5,6 +5,7 @@ import { FiMinus, FiPlus, FiTrash2 } from "react-icons/fi";
 import { Link as RouterLink } from "react-router-dom";
 import { colors } from "../../theme/theme";
 import { useWishlist } from "../context/WishlistContext";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { useCart } from "../context/CartContext";
 
 const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -45,7 +46,7 @@ export default function Wishlist() {
     try {
       await deleteWishlistProduct(productId);
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to remove item.");
+      setActionError(getApiErrorMessage(err, "Unable to remove item."));
     }
   };
 
@@ -55,7 +56,7 @@ export default function Wishlist() {
     try {
       await clearWholeWishlist();
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to clear wishlist.");
+      setActionError(getApiErrorMessage(err, "Unable to clear wishlist."));
     }
   };
 
@@ -78,7 +79,7 @@ export default function Wishlist() {
       await addCartItem({ productId, variantId, quantity: getQty(productId) });
       setActionSuccess("Item added to cart.");
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to add item to cart.");
+      setActionError(getApiErrorMessage(err, "Unable to add item to cart."));
     }
   };
 

@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchReturnsReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount } from "./AnalyticsShared";
 
 const ReturnsAnalyticsPage = () => {
@@ -22,7 +23,7 @@ const ReturnsAnalyticsPage = () => {
         const list = Array.isArray(payload) ? payload : payload?.breakdown || payload?.statuses || payload?.items || [];
         if (isMounted) setRows(Array.isArray(list) ? list : []);
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load returns report.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load returns report."));
       } finally {
         if (isMounted) setLoading(false);
       }

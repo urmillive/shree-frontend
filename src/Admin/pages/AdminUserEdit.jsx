@@ -17,6 +17,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -85,7 +86,7 @@ const AdminUserEdit = () => {
       } catch (e) {
         if (cancelled) return;
         setUser(null);
-        setError(e?.response?.data?.message || e?.message || "Failed to load user.");
+        setError(getApiErrorMessage(e, "Failed to load user."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -142,7 +143,7 @@ const AdminUserEdit = () => {
       }));
       setActionSuccess(nextStatus ? "User reactivated successfully." : "User deactivated successfully.");
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to update user status.");
+      setActionError(getApiErrorMessage(e, "Failed to update user status."));
     } finally {
       setActionLoading(false);
     }
@@ -165,7 +166,7 @@ const AdminUserEdit = () => {
       }));
       setActionSuccess("User role updated successfully.");
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to update user role.");
+      setActionError(getApiErrorMessage(e, "Failed to update user role."));
     } finally {
       setActionLoading(false);
     }

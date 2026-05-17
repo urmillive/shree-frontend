@@ -1,60 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMenu, FiPackage, FiCheck, FiX } from "react-icons/fi";
+import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMoreVertical, FiPackage, FiRotateCcw, FiCheck, FiX } from "react-icons/fi";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
+import { useToast } from "../../context/ToastContext";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha, blackAlpha, whiteAlpha } from "../../theme/theme";
 
 const profilePageStyles = {
-  page: {
-    flex: 1,
-    width: "100%",
-    minHeight: "100%",
-    background: colors.background,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "24px",
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    color: colors.text,
-  },
-  card: {
-    width: "100%",
-    maxWidth: "920px",
-    background: colors.background,
-    border: `1px solid ${blackAlpha(0.12)}`,
-    borderRadius: "20px",
-    boxShadow: `0 20px 45px ${blackAlpha(0.08)}`,
-    overflow: "visible",
-  },
-  hero: {
-    background: colors.primary,
-    color: colors.onPrimary,
-    padding: "28px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "14px",
-    borderTopLeftRadius: "20px",
-    borderTopRightRadius: "20px",
-  },
-  cardBody: {
-    padding: "26px",
-    display: "grid",
-    gap: "14px",
-    borderBottomLeftRadius: "20px",
-    borderBottomRightRadius: "20px",
-  },
   heroMuted: {
     margin: 0,
     opacity: 0.9,
     fontSize: "14px",
-    color: colors.onPrimary,
-  },
-  heroTitle: {
-    margin: "4px 0 0",
-    fontSize: "30px",
-    lineHeight: 1.2,
     color: colors.onPrimary,
   },
   heroNameInput: {
@@ -115,6 +71,23 @@ const profilePageStyles = {
     color: colors.text,
     background: colors.background,
   },
+  fieldInput: {
+    display: "block",
+    width: "100%",
+    maxWidth: "100%",
+    minHeight: "44px",
+    marginTop: "7px",
+    padding: "10px 12px",
+    borderRadius: "10px",
+    border: `1px solid ${blackAlpha(0.15)}`,
+    fontSize: "15px",
+    lineHeight: 1.4,
+    outline: "none",
+    color: colors.text,
+    background: colors.background,
+    boxSizing: "border-box",
+    fontFamily: "inherit",
+  },
   inputOtp: {
     width: "120px",
     padding: "10px 12px",
@@ -173,6 +146,7 @@ const profilePageStyles = {
     position: "relative",
     display: "inline-flex",
     alignItems: "center",
+    zIndex: 21,
   },
   menuTrigger: {
     display: "inline-flex",
@@ -216,10 +190,22 @@ const profilePageStyles = {
     textAlign: "left",
     fontFamily: "inherit",
   },
+  menuItemDanger: {
+    color: "#b42318",
+  },
+  menuBackdrop: {
+    position: "fixed",
+    inset: 0,
+    zIndex: 15,
+    background: blackAlpha(0.25),
+    border: "none",
+    padding: 0,
+    cursor: "default",
+  },
 };
 
-/** Scoped CSS: diagonal hover fill on Save / Cancel (inline styles cannot do :hover) */
-const profileHeroEditButtonCss = `
+/** Scoped CSS: hero edit buttons + responsive layout (breakpoints inline styles cannot express cleanly) */
+const profilePageScopedCss = `
   .profile-hero-edit-btn {
     position: relative;
     display: inline-flex;
@@ -271,12 +257,254 @@ const profileHeroEditButtonCss = `
     opacity: 0.65;
     cursor: not-allowed;
   }
+
+  /* Page shell & card — responsive layout */
+  .profile-page {
+    flex: 1;
+    width: 100%;
+    min-height: 100%;
+    background: ${colors.background};
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: ${colors.text};
+    box-sizing: border-box;
+  }
+  .profile-page *,
+  .profile-page *::before,
+  .profile-page *::after {
+    box-sizing: border-box;
+  }
+  @media (max-width: 640px) {
+    .profile-page {
+      padding: 16px 12px;
+      align-items: flex-start;
+      padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  .profile-card {
+    width: 100%;
+    max-width: 920px;
+    background: ${colors.background};
+    border: 1px solid ${blackAlpha(0.12)};
+    border-radius: 20px;
+    box-shadow: 0 20px 45px ${blackAlpha(0.08)};
+    overflow: visible;
+  }
+
+  .profile-hero {
+    background: ${colors.primary};
+    color: ${colors.onPrimary};
+    padding: 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 14px;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+  }
+  @media (max-width: 640px) {
+    .profile-hero {
+      padding: 20px 16px;
+      gap: 14px;
+    }
+    .profile-hero:not(.profile-hero--editing) {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      column-gap: 12px;
+    }
+    .profile-hero:not(.profile-hero--editing) .profile-hero-main {
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0;
+    }
+    .profile-hero:not(.profile-hero--editing) .profile-hero-actions {
+      grid-column: 2;
+      grid-row: 1;
+      width: auto;
+      align-self: flex-start;
+    }
+    .profile-hero:not(.profile-hero--editing) .profile-hero-actions-inner {
+      width: auto;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: flex-end;
+    }
+    .profile-hero-btn-desktop {
+      display: none !important;
+    }
+    .profile-hero:not(.profile-hero--editing) .profile-menu-wrap {
+      width: auto;
+    }
+    .profile-hero:not(.profile-hero--editing) .profile-menu-trigger {
+      width: 44px;
+      height: 44px;
+    }
+    .profile-hero--editing {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .profile-hero-edit-actions {
+      width: 100%;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .profile-hero-edit-actions .profile-hero-edit-btn,
+    .profile-hero-edit-actions .profile-hero-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .profile-hero-main {
+    flex: 1 1 240px;
+    min-width: 0;
+  }
+
+  .profile-hero-title {
+    margin: 4px 0 0;
+    font-size: clamp(1.375rem, 4.2vw, 1.875rem);
+    line-height: 1.2;
+    color: ${colors.onPrimary};
+    word-break: break-word;
+  }
+
+  .profile-hero-name-input {
+    max-width: 420px;
+  }
+  @media (max-width: 640px) {
+    .profile-hero-name-input {
+      max-width: none;
+      font-size: clamp(1.1rem, 4vw, 1.35rem) !important;
+    }
+  }
+
+  .profile-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex: 0 1 auto;
+  }
+  .profile-hero-actions-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .profile-menu-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    min-width: 220px;
+    padding: 6px;
+    border-radius: 12px;
+    background: ${colors.background};
+    border: 1px solid ${blackAlpha(0.12)};
+    box-shadow: 0 16px 40px ${blackAlpha(0.14)};
+    z-index: 20;
+  }
+  @media (max-width: 640px) {
+    .profile-menu-dropdown {
+      min-width: 240px;
+    }
+  }
+
+  .profile-card-body {
+    padding: 26px;
+    display: grid;
+    gap: 14px;
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+  }
+  @media (max-width: 640px) {
+    .profile-card-body {
+      padding: 16px 14px;
+    }
+  }
+
+  .profile-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 14px;
+  }
+  .profile-field-input,
+  .profile-phone-input {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    font-family: inherit;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  @media (max-width: 640px) {
+    .profile-info-grid .profile-field-card {
+      grid-column: 1 / -1;
+    }
+    .profile-field-input,
+    .profile-phone-input {
+      font-size: 16px;
+    }
+  }
+
+  .profile-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .profile-verify-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  @media (max-width: 640px) {
+    .profile-verify-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .profile-verify-row .profile-verify-input,
+    .profile-verify-row .profile-phone-input {
+      width: 100% !important;
+      max-width: none !important;
+      min-width: 0 !important;
+      flex: 1 1 auto !important;
+    }
+    .profile-verify-row .profile-otp-input {
+      width: 100% !important;
+      max-width: none !important;
+      letter-spacing: 0.12em;
+      text-align: center;
+    }
+    .profile-verify-row .profile-verify-btn {
+      width: 100%;
+    }
+  }
+
+  .profile-menu-item:hover:not(:disabled) {
+    background: ${primaryAlpha(0.08)};
+  }
+  .profile-menu-item-danger:hover:not(:disabled) {
+    background: rgba(180, 35, 24, 0.08);
+  }
 `;
 
 const normalizeMobileDigits = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 10);
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const isEditing = searchParams.get("edit") === "true";
   const [profile, setProfile] = useState(null);
@@ -319,7 +547,7 @@ const Profile = () => {
         return;
       }
 
-      setError(err?.response?.data?.message || "Unable to load profile details.");
+      setError(getApiErrorMessage(err, "Unable to load profile details."));
     } finally {
       setLoading(false);
     }
@@ -388,8 +616,11 @@ const Profile = () => {
       await client.post("/auth/send-mobile-otp", { mobile: effectiveMobile });
       setOtpSent(true);
       setMobileVerifyMsg("OTP sent. Enter the code below.");
+      showSuccess("OTP sent to your mobile.");
     } catch (err) {
-      setMobileVerifyErr(err?.response?.data?.message || "Unable to send OTP.");
+      const msg = getApiErrorMessage(err, "Unable to send OTP.");
+      setMobileVerifyErr(msg);
+      showError(msg);
     } finally {
       setSendingOtp(false);
     }
@@ -419,10 +650,13 @@ const Profile = () => {
         await refreshProfile();
       }
       setMobileVerifyMsg("Mobile verified successfully.");
+      showSuccess("Mobile verified successfully.");
       setOtpSent(false);
       setMobileOtp("");
     } catch (err) {
-      setMobileVerifyErr(err?.response?.data?.message || "Invalid or expired OTP.");
+      const msg = getApiErrorMessage(err, "Invalid or expired OTP.");
+      setMobileVerifyErr(msg);
+      showError(msg);
     } finally {
       setVerifyingOtp(false);
     }
@@ -442,8 +676,11 @@ const Profile = () => {
       await client.post("/auth/resend-email-otp", { email });
       setEmailOtpSent(true);
       setEmailVerifyMsg("OTP sent to your email. Enter the code below.");
+      showSuccess("OTP sent to your email.");
     } catch (err) {
-      setEmailVerifyErr(err?.response?.data?.message || "Unable to send email OTP.");
+      const msg = getApiErrorMessage(err, "Unable to send email OTP.");
+      setEmailVerifyErr(msg);
+      showError(msg);
     } finally {
       setSendingEmailOtp(false);
     }
@@ -471,10 +708,13 @@ const Profile = () => {
         await refreshProfile();
       }
       setEmailVerifyMsg("Email verified successfully.");
+      showSuccess("Email verified successfully.");
       setEmailOtpSent(false);
       setEmailOtp("");
     } catch (err) {
-      setEmailVerifyErr(err?.response?.data?.message || "Invalid or expired OTP.");
+      const msg = getApiErrorMessage(err, "Invalid or expired OTP.");
+      setEmailVerifyErr(msg);
+      showError(msg);
     } finally {
       setVerifyingEmailOtp(false);
     }
@@ -533,13 +773,14 @@ const Profile = () => {
         navigate("/login");
         return;
       }
-      setProfileEditErr(err?.response?.data?.message || "Unable to update profile.");
+      setProfileEditErr(getApiErrorMessage(err, "Unable to update profile."));
     } finally {
       setSavingProfile(false);
     }
   };
 
   const handleLogout = async () => {
+    setMenuOpen(false);
     setLoggingOut(true);
     try {
       await client.post("/auth/logout", {});
@@ -552,10 +793,15 @@ const Profile = () => {
     }
   };
 
+  const closeMenu = () => setMenuOpen(false);
+
   if (loading) {
     return (
-      <div style={profilePageStyles.page}>
-        <div style={{ ...profilePageStyles.card, ...profilePageStyles.loadingCard }}>Loading your profile...</div>
+      <div className="profile-page">
+        <style>{profilePageScopedCss}</style>
+        <div className="profile-card" style={profilePageStyles.loadingCard}>
+          Loading your profile...
+        </div>
       </div>
     );
   }
@@ -563,10 +809,16 @@ const Profile = () => {
   const userAddresses = Array.isArray(profile?.addresses) ? profile.addresses : [];
   const hasAddresses = userAddresses.length > 0;
 
+  const goToAddresses = () => {
+    closeMenu();
+    navigate(hasAddresses ? "/profile/addresses" : "/profile/addresses/new");
+  };
+
   if (error || !profile) {
     return (
-      <div style={profilePageStyles.page}>
-        <div style={{ ...profilePageStyles.card, ...profilePageStyles.loadingCard }}>
+      <div className="profile-page">
+        <style>{profilePageScopedCss}</style>
+        <div className="profile-card" style={profilePageStyles.loadingCard}>
           <h2 style={{ marginTop: 0, color: colors.text }}>Profile Unavailable</h2>
           <p style={{ color: colors.text, marginBottom: "20px" }}>{error || "No profile data found."}</p>
           <button
@@ -586,15 +838,16 @@ const Profile = () => {
   }
 
   return (
-    <div style={profilePageStyles.page}>
-      <style>{profileHeroEditButtonCss}</style>
-      <div style={profilePageStyles.card}>
-        <div style={profilePageStyles.hero}>
-          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+    <div className="profile-page">
+      <style>{profilePageScopedCss}</style>
+      <div className="profile-card">
+        <div className={`profile-hero${isEditing ? " profile-hero--editing" : ""}`}>
+          <div className="profile-hero-main">
             <p style={profilePageStyles.heroMuted}>Welcome back</p>
             {isEditing ? (
               <input
                 type="text"
+                className="profile-hero-name-input"
                 autoComplete="name"
                 placeholder="Your name"
                 value={nameDraft}
@@ -606,7 +859,7 @@ const Profile = () => {
                 }}
               />
             ) : (
-              <h1 style={profilePageStyles.heroTitle}>{profile.name}</h1>
+              <h1 className="profile-hero-title">{profile.name}</h1>
             )}
             <p style={profilePageStyles.heroEmail}>{profile.email}</p>
             {isEditing && profileEditErr && (
@@ -615,10 +868,10 @@ const Profile = () => {
               </p>
             )}
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+          <div className="profile-hero-actions">
             {/* <span style={profilePageStyles.rolePill}>{profile.role}</span> */}
             {isEditing ? (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+              <div className="profile-hero-actions-inner profile-hero-edit-actions">
                 <button
                   type="button"
                   className="profile-hero-edit-btn"
@@ -643,6 +896,7 @@ const Profile = () => {
                 </button>
                 <button
                   type="button"
+                  className="profile-hero-btn"
                   onClick={handleLogout}
                   disabled={loggingOut || savingProfile}
                   style={{
@@ -659,9 +913,10 @@ const Profile = () => {
                 </button>
               </div>
             ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
+              <div className="profile-hero-actions-inner">
                 <button
                   type="button"
+                  className="profile-hero-btn profile-hero-btn-desktop"
                   onClick={() => navigate("/orders")}
                   disabled={loggingOut}
                   style={{
@@ -678,7 +933,8 @@ const Profile = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate(hasAddresses ? "/profile/addresses" : "/profile/addresses/new")}
+                  className="profile-hero-btn profile-hero-btn-desktop"
+                  onClick={goToAddresses}
                   disabled={loggingOut}
                   style={{
                     ...profilePageStyles.heroButton,
@@ -692,12 +948,22 @@ const Profile = () => {
                   <FiMapPin size={18} aria-hidden />
                   Address
                 </button>
-                <div ref={menuContainerRef} style={profilePageStyles.menuWrap}>
+                {menuOpen && (
                   <button
                     type="button"
+                    className="profile-menu-backdrop"
+                    aria-label="Close menu"
+                    style={profilePageStyles.menuBackdrop}
+                    onClick={closeMenu}
+                  />
+                )}
+                <div ref={menuContainerRef} className="profile-menu-wrap" style={profilePageStyles.menuWrap}>
+                  <button
+                    type="button"
+                    className="profile-menu-trigger"
                     aria-haspopup="true"
                     aria-expanded={menuOpen}
-                    aria-label={menuOpen ? "Close menu" : "Open menu"}
+                    aria-label={menuOpen ? "Close profile menu" : "Open profile menu"}
                     onClick={() => setMenuOpen((open) => !open)}
                     disabled={loggingOut}
                     style={{
@@ -706,15 +972,21 @@ const Profile = () => {
                       opacity: loggingOut ? 0.75 : 1,
                     }}
                   >
-                    <FiMenu size={22} strokeWidth={2.25} aria-hidden />
+                    <FiMoreVertical size={22} strokeWidth={2.25} aria-hidden />
                   </button>
                 {menuOpen && (
-                  <div role="menu" aria-label="Profile actions" style={profilePageStyles.menuDropdown}>
+                  <div
+                    role="menu"
+                    className="profile-menu-dropdown"
+                    aria-label="Profile actions"
+                    style={profilePageStyles.menuDropdown}
+                  >
                     <button
                       type="button"
                       role="menuitem"
+                      className="profile-menu-item"
                       onClick={() => {
-                        setMenuOpen(false);
+                        closeMenu();
                         beginEditProfile();
                       }}
                       disabled={loggingOut}
@@ -725,14 +997,29 @@ const Profile = () => {
                       }}
                     >
                       <FiEdit2 size={18} aria-hidden />
-                      Edit
+                      Edit profile
                     </button>
-                   
                     <button
                       type="button"
                       role="menuitem"
+                      className="profile-menu-item"
+                      onClick={goToAddresses}
+                      disabled={loggingOut}
+                      style={{
+                        ...profilePageStyles.menuItem,
+                        cursor: loggingOut ? "not-allowed" : "pointer",
+                        opacity: loggingOut ? 0.65 : 1,
+                      }}
+                    >
+                      <FiMapPin size={18} aria-hidden />
+                      {hasAddresses ? "My addresses" : "Add address"}
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="profile-menu-item"
                       onClick={() => {
-                        setMenuOpen(false);
+                        closeMenu();
                         navigate("/orders");
                       }}
                       disabled={loggingOut}
@@ -748,8 +1035,27 @@ const Profile = () => {
                     <button
                       type="button"
                       role="menuitem"
+                      className="profile-menu-item"
                       onClick={() => {
-                        setMenuOpen(false);
+                        closeMenu();
+                        navigate("/returns");
+                      }}
+                      disabled={loggingOut}
+                      style={{
+                        ...profilePageStyles.menuItem,
+                        cursor: loggingOut ? "not-allowed" : "pointer",
+                        opacity: loggingOut ? 0.65 : 1,
+                      }}
+                    >
+                      <FiRotateCcw size={18} aria-hidden />
+                      My returns
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="profile-menu-item"
+                      onClick={() => {
+                        closeMenu();
                         navigate("/profile/change-password");
                       }}
                       disabled={loggingOut}
@@ -765,13 +1071,12 @@ const Profile = () => {
                     <button
                       type="button"
                       role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        handleLogout();
-                      }}
+                      className="profile-menu-item profile-menu-item-danger"
+                      onClick={handleLogout}
                       disabled={loggingOut}
                       style={{
                         ...profilePageStyles.menuItem,
+                        ...profilePageStyles.menuItemDanger,
                         cursor: loggingOut ? "not-allowed" : "pointer",
                         opacity: loggingOut ? 0.65 : 1,
                       }}
@@ -787,25 +1092,23 @@ const Profile = () => {
           </div>
         </div>
 
-        <div style={profilePageStyles.cardBody}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
+        <div className="profile-card-body">
+          <div className="profile-info-grid">
             {isEditing ? (
-              <div style={profilePageStyles.infoCard}>
+              <div className="profile-field-card" style={profilePageStyles.infoCard}>
                 <p style={profilePageStyles.infoCardTitle}>Mobile</p>
                 <input
                   type="tel"
+                  className="profile-field-input"
                   inputMode="numeric"
                   autoComplete="tel"
-                  placeholder="10-digit mobile"
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
                   value={mobileDraft}
                   onChange={(e) => setMobileDraft(normalizeMobileDigits(e.target.value))}
                   disabled={savingProfile}
                   style={{
-                    ...profilePageStyles.input,
-                    marginTop: "7px",
-                    width: "100%",
-                    maxWidth: "280px",
-                    boxSizing: "border-box",
+                    ...profilePageStyles.fieldInput,
                     opacity: savingProfile ? 0.85 : 1,
                   }}
                 />
@@ -824,7 +1127,7 @@ const Profile = () => {
             />
           </div>
 
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "8px" }}>
+          <div className="profile-status-row">
             <StatusBadge label="Email Verified" ok={profile.isEmailVerified} />
             <StatusBadge label="Mobile Verified" ok={profile.isMobileVerified} />
             {/* <StatusBadge label="Account Active" ok={profile.isActive} /> */}
@@ -840,10 +1143,11 @@ const Profile = () => {
                 Enter it below to verify.
               </p>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <div className="profile-verify-row">
                 {!emailOtpSent ? (
                   <button
                     type="button"
+                    className="profile-verify-btn"
                     onClick={handleSendEmailOtp}
                     disabled={sendingEmailOtp || verifyingEmailOtp}
                     style={{
@@ -858,6 +1162,7 @@ const Profile = () => {
                   <>
                     <input
                       type="text"
+                      className="profile-verify-input profile-otp-input"
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       placeholder="6-digit OTP"
@@ -870,6 +1175,7 @@ const Profile = () => {
                     />
                     <button
                       type="button"
+                      className="profile-verify-btn"
                       onClick={handleVerifyEmailOtp}
                       disabled={verifyingEmailOtp || emailOtp.length !== 6}
                       style={{
@@ -882,6 +1188,7 @@ const Profile = () => {
                     </button>
                     <button
                       type="button"
+                      className="profile-verify-btn"
                       onClick={handleSendEmailOtp}
                       disabled={sendingEmailOtp || verifyingEmailOtp}
                       style={{
@@ -910,24 +1217,28 @@ const Profile = () => {
                 Your mobile is not verified yet. Enter your 10-digit number, send OTP, then enter the code you receive.
               </p>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
+              <div className="profile-verify-row">
                 <input
                   type="tel"
+                  className="profile-verify-input profile-phone-input"
                   inputMode="numeric"
                   autoComplete="tel"
-                  placeholder="10-digit mobile"
+                  placeholder="10-digit mobile number"
+                  maxLength={10}
                   value={mobileDraft}
                   onChange={(e) => setMobileDraft(normalizeMobileDigits(e.target.value))}
                   disabled={sendingOtp || verifyingOtp}
                   style={{
-                    ...profilePageStyles.input,
-                    minWidth: "160px",
-                    flex: "1 1 160px",
+                    ...profilePageStyles.fieldInput,
+                    marginTop: 0,
+                    flex: "1 1 100%",
+                    opacity: sendingOtp || verifyingOtp ? 0.85 : 1,
                   }}
                 />
                 {!otpSent ? (
                   <button
                     type="button"
+                    className="profile-verify-btn"
                     onClick={handleSendMobileOtp}
                     disabled={sendingOtp || verifyingOtp || effectiveMobile.length !== 10}
                     style={{
@@ -942,6 +1253,7 @@ const Profile = () => {
                   <>
                     <input
                       type="text"
+                      className="profile-verify-input profile-otp-input"
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       placeholder="6-digit OTP"
@@ -954,6 +1266,7 @@ const Profile = () => {
                     />
                     <button
                       type="button"
+                      className="profile-verify-btn"
                       onClick={handleVerifyMobileOtp}
                       disabled={verifyingOtp || mobileOtp.length !== 6}
                       style={{
@@ -966,6 +1279,7 @@ const Profile = () => {
                     </button>
                     <button
                       type="button"
+                      className="profile-verify-btn"
                       onClick={handleSendMobileOtp}
                       disabled={sendingOtp || verifyingOtp}
                       style={{

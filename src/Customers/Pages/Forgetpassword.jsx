@@ -13,6 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import client from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const authLayout = {
@@ -124,8 +125,7 @@ const Forgetpassword = () => {
     } catch (error) {
       setErrors({
         submit:
-          error.response?.data?.message ||
-          "Something went wrong. Please try again.",
+          getApiErrorMessage(error, "Something went wrong. Please try again."),
       });
     } finally {
       setLoading(false);

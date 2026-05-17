@@ -27,6 +27,7 @@ import {
   normalizePublicCategoryDetailPayload,
 } from "../services/publicCategoriesService";
 import { fetchPublicProducts, normalizeProductsPayload } from "../services/publicProductsService";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const PRODUCTS_LIMIT = 12;
@@ -95,7 +96,7 @@ const CategoryDetail = () => {
       setError(
         status === 404
           ? "This category does not exist or is no longer available."
-          : err?.response?.data?.message || err?.message || "Could not load category."
+          : getApiErrorMessage(err, "Could not load category.")
       );
       setCategory(null);
       setBreadcrumb([]);
@@ -140,7 +141,7 @@ const CategoryDetail = () => {
         setTotalProducts(Number(normalized.total) || normalized.products.length);
       } catch (err) {
         if (cancelled) return;
-        setProductsError(err?.response?.data?.message || err?.message || "Unable to load products.");
+        setProductsError(getApiErrorMessage(err, "Unable to load products."));
         setProducts([]);
         setTotalProducts(0);
         setTotalPages(1);

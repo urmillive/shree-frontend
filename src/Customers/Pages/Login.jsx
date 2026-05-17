@@ -24,9 +24,8 @@ import client, {
   setStoredRole,
   setStoredUserDisplayName,
 } from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
-import { useCart } from "../context/CartContext";
-
 const authLayout = {
   card: {
     borderRadius: 4,
@@ -185,11 +184,6 @@ const Login = () => {
         setStoredAdminToken(accessToken);
       } else {
         setStoredAccessToken(accessToken);
-        try {
-          await mergeCurrentGuestCart();
-        } catch {
-          // Keep login successful even if merge fails.
-        }
       }
 
       setSuccessMessage("Login successful.");
@@ -204,7 +198,7 @@ const Login = () => {
       }, 800);
     } catch (error) {
       setErrors({
-        submit: error.response?.data?.message || "Login failed. Please try again.",
+        submit: getApiErrorMessage(error, "Login failed. Please try again."),
       });
     } finally {
       setLoading(false);

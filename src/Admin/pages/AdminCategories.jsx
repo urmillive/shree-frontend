@@ -20,6 +20,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { fetchAdminCategories, flattenCategories, normalizeCategoryListPayload } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
@@ -48,7 +49,7 @@ const AdminCategories = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load categories.",
+        message: getApiErrorMessage(error, "Failed to load categories."),
       });
     } finally {
       setLoading(false);

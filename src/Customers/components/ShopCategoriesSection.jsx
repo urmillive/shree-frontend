@@ -9,6 +9,7 @@ import {
   getPublicCategorySlug,
   normalizePublicCategoryTreePayload,
 } from "../services/publicCategoriesService";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 export function CategoryCircleItem({ node, subtitle = null, size = "default" }) {
@@ -167,7 +168,7 @@ export default function ShopCategoriesSection() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.response?.data?.message || err?.message || "Could not load categories.");
+        setError(getApiErrorMessage(err, "Could not load categories."));
         setMainCategories([]);
       })
       .finally(() => {

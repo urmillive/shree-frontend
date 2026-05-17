@@ -24,6 +24,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -121,7 +122,7 @@ const AdminUsers = () => {
     } catch (e) {
       setRows([]);
       setTotal(0);
-      setError(e?.response?.data?.message || e?.message || "Failed to load users.");
+      setError(getApiErrorMessage(e, "Failed to load users."));
     } finally {
       setLoading(false);
     }

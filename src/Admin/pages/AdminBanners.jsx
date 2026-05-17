@@ -14,6 +14,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -131,7 +132,7 @@ const AdminBanners = () => {
         }
       }
     } catch (error) {
-      setError(error?.response?.data?.message || error?.message || "Failed to create banner.");
+      setError(getApiErrorMessage(error, "Failed to create banner."));
     } finally {
       setLoadingCreate(false);
     }

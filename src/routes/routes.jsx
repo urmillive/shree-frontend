@@ -55,8 +55,9 @@ import Cart from "../Customers/Pages/Cart";
 import Checkout from "../Customers/Pages/Checkout";
 import OrderDetail from "../Customers/Pages/OrderDetail";
 import OrdersList from "../Customers/Pages/OrdersList";
+import ReturnDetail from "../Customers/Pages/ReturnDetail";
+import ReturnsList from "../Customers/Pages/ReturnsList";
 import Wishlist from "../Customers/Pages/Wishlist";
-import NotFound from "../Customers/Pages/NotFound";
 
 function AppRoutes() {
   return (
@@ -82,6 +83,8 @@ function AppRoutes() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders" element={<OrdersList />} />
           <Route path="/orders/:orderNumber" element={<OrderDetail />} />
+          <Route path="/returns" element={<ReturnsList />} />
+          <Route path="/returns/:returnNumber" element={<ReturnDetail />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={["super_admin", "manager"]} />}>
@@ -126,7 +129,6 @@ function AppRoutes() {
         <Route path="/admin/analytics/inventory" element={<InventoryAnalyticsPage />} />
         <Route path="/admin/analytics/returns" element={<ReturnsAnalyticsPage />} />
       </Route>
-      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

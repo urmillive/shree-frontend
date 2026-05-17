@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { fetchAdminCategories, fetchAdminCategoryById, flattenCategories, normalizeCategoryPayload, updateAdminCategory } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
@@ -51,7 +52,7 @@ const AdminCategoryEdit = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load category.",
+        message: getApiErrorMessage(error, "Failed to load category."),
       });
     } finally {
       setLoading(false);
@@ -88,7 +89,7 @@ const AdminCategoryEdit = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to update category.",
+        message: getApiErrorMessage(error, "Failed to update category."),
       });
     } finally {
       setUpdating(false);

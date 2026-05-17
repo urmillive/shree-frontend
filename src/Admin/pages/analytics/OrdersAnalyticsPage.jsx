@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchOrdersReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount } from "./AnalyticsShared";
 
 const OrdersAnalyticsPage = () => {
@@ -22,7 +23,7 @@ const OrdersAnalyticsPage = () => {
         const list = Array.isArray(payload) ? payload : payload?.breakdown || payload?.statuses || payload?.items || [];
         if (isMounted) setRows(list);
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load order breakdown.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load order breakdown."));
       } finally {
         if (isMounted) setLoading(false);
       }

@@ -18,6 +18,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -70,7 +71,7 @@ function normalizeCategoriesListPayload(payload) {
 }
 
 function getProductFormErrorMessage(error, isEdit) {
-  const rawMessage = error?.response?.data?.message || error?.message || "";
+  const rawMessage = getApiErrorMessage(error, "");
   if (!rawMessage) return isEdit ? "Failed to update product." : "Failed to create product.";
 
   if (rawMessage.toLowerCase().includes("invalid enum value")) {
@@ -253,7 +254,7 @@ const AdminProductCreate = () => {
       const nextImages = normalizeProductImages(product);
       setProductImages(nextImages);
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || "Failed to load product.");
+      setError(getApiErrorMessage(e, "Failed to load product."));
     } finally {
       setLoadingProduct(false);
     }
@@ -371,7 +372,7 @@ const AdminProductCreate = () => {
             setStagingFiles([]);
             setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
           } catch (imgErr) {
-            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+            setImageError(getApiErrorMessage(imgErr, "Product saved but image upload failed."));
           } finally {
             setUploadingImage(false);
           }
@@ -398,7 +399,7 @@ const AdminProductCreate = () => {
             setStagingFiles([]);
             setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
           } catch (imgErr) {
-            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+            setImageError(getApiErrorMessage(imgErr, "Product saved but image upload failed."));
           } finally {
             setUploadingImage(false);
           }
@@ -442,7 +443,7 @@ const AdminProductCreate = () => {
         imageFileInputRef.current.value = "";
       }
     } catch (e) {
-      setImageError(e?.response?.data?.message || e?.message || "Failed to upload image(s).");
+      setImageError(getApiErrorMessage(e, "Failed to upload image(s)."));
     } finally {
       setUploadingImage(false);
     }
@@ -459,7 +460,7 @@ const AdminProductCreate = () => {
       setProductImages(nextImages);
       setImageSuccess("Image deleted.");
     } catch (e) {
-      setImageError(e?.response?.data?.message || e?.message || "Failed to delete image.");
+      setImageError(getApiErrorMessage(e, "Failed to delete image."));
     } finally {
       setUploadingImage(false);
     }

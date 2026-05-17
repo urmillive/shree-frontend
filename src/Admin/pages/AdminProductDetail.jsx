@@ -20,6 +20,7 @@ import { FiChevronDown } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -81,7 +82,7 @@ const AdminProductDetail = () => {
       setProduct(normalizeProductPayload(data));
     } catch (e) {
       setProduct(null);
-      setError(e?.response?.data?.message || e?.message || "Failed to load product.");
+      setError(getApiErrorMessage(e, "Failed to load product."));
     } finally {
       setLoading(false);
     }
@@ -122,7 +123,7 @@ const AdminProductDetail = () => {
     } catch (e) {
       setStatusNotice({
         type: "error",
-        message: e?.response?.data?.message || e?.message || "Could not update status.",
+        message: getApiErrorMessage(e, "Could not update status."),
       });
     } finally {
       setStatusSaving(false);

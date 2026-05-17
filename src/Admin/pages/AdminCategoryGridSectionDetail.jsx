@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -36,7 +37,7 @@ const AdminCategoryGridSectionDetail = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load section.",
+        message: getApiErrorMessage(error, "Failed to load section."),
       });
     } finally {
       setLoading(false);
@@ -59,7 +60,7 @@ const AdminCategoryGridSectionDetail = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to delete section.",
+        message: getApiErrorMessage(error, "Failed to delete section."),
       });
     } finally {
       setDeleting(false);

@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -119,7 +120,7 @@ const AdminCategoryGridSectionCreate = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to create category grid section.",
+        message: getApiErrorMessage(error, "Failed to create category grid section."),
       });
     } finally {
       setCreating(false);

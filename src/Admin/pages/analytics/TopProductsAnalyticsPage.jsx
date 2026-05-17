@@ -3,6 +3,7 @@ import { Box, TextField } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchTopProductsReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCurrency, formatCount } from "./AnalyticsShared";
 
 const TopProductsAnalyticsPage = () => {
@@ -23,7 +24,7 @@ const TopProductsAnalyticsPage = () => {
         const list = Array.isArray(payload) ? payload : payload?.topProducts || payload?.items || [];
         if (isMounted) setRows(list);
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load top products.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load top products."));
       } finally {
         if (isMounted) setLoading(false);
       }

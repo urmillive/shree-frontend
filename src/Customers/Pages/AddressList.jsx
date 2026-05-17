@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiEdit2, FiMapPin, FiPlus, FiTrash2 } from "react-icons/fi";
 import client from "../../Setup/Axios";
 import { colors, primaryAlpha, blackAlpha } from "../../theme/theme";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { extractAddressesFromMeResponse, getAddressId } from "../../utils/addressesApi";
 
 const pageStyles = {
@@ -179,7 +180,7 @@ const AddressList = () => {
         navigate("/login");
         return;
       }
-      setError(err?.response?.data?.message || "Unable to load addresses.");
+      setError(getApiErrorMessage(err, "Unable to load addresses."));
       setAddresses([]);
     } finally {
       setLoading(false);
@@ -199,7 +200,7 @@ const AddressList = () => {
       await client.delete(`/users/me/addresses/${id}`);
       await load();
     } catch (err) {
-      window.alert(err?.response?.data?.message || "Could not delete address.");
+      setError(getApiErrorMessage(err, "Could not delete address."));
     } finally {
       setDeletingId("");
     }

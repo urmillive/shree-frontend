@@ -3,6 +3,7 @@ import { Box } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchRevenueReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { AnalyticsTable, DateFilterBar, ExportButtons, GroupByControl, ReportShell, formatCurrency, formatCount } from "./AnalyticsShared";
 
 const RevenueAnalyticsPage = () => {
@@ -23,7 +24,7 @@ const RevenueAnalyticsPage = () => {
         const reportRows = Array.isArray(payload) ? payload : payload?.breakdown || payload?.items || [];
         if (isMounted) setRows(reportRows);
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load revenue report.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load revenue report."));
       } finally {
         if (isMounted) setLoading(false);
       }

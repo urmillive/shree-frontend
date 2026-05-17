@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   deleteAdminCategory,
   fetchAdminCategoryById,
@@ -52,7 +53,7 @@ const AdminCategoryDetail = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load category.",
+        message: getApiErrorMessage(error, "Failed to load category."),
       });
     } finally {
       setLoading(false);
@@ -81,7 +82,7 @@ const AdminCategoryDetail = () => {
       } catch (error) {
         setFeedback({
           type: "error",
-          message: error?.response?.data?.message || error?.message || "Failed to toggle category status.",
+          message: getApiErrorMessage(error, "Failed to toggle category status."),
         });
       }
     });
@@ -122,7 +123,7 @@ const AdminCategoryDetail = () => {
       } catch (error) {
         setFeedback({
           type: "error",
-          message: error?.response?.data?.message || error?.message || "Image upload or confirm failed.",
+          message: getApiErrorMessage(error, "Image upload or confirm failed."),
         });
       }
     });
@@ -137,7 +138,7 @@ const AdminCategoryDetail = () => {
       } catch (error) {
         setFeedback({
           type: "error",
-          message: error?.response?.data?.message || error?.message || "Failed to delete category.",
+          message: getApiErrorMessage(error, "Failed to delete category."),
         });
       }
     });

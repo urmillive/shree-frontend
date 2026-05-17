@@ -3,11 +3,30 @@ import { useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft, FiTrash2 } from "react-icons/fi";
 import client from "../../Setup/Axios";
 import { colors, blackAlpha } from "../../theme/theme";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { extractAddressesFromMeResponse, getAddressId } from "../../utils/addressesApi";
 
 const normalizeMobileDigits = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 10);
 
 const normalizePincode = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 6);
+
+const ADDRESS_LABEL_OPTIONS = ["Home", "Work", "Other"];
+
+const parseAddressLabel = (value) => {
+  const raw = String(value ?? "").trim();
+  const match = ADDRESS_LABEL_OPTIONS.find((opt) => opt.toLowerCase() === raw.toLowerCase());
+  if (match) return { label: match, labelOther: "" };
+  if (!raw) return { label: "Home", labelOther: "" };
+  return { label: "Other", labelOther: raw };
+};
+
+const resolveAddressLabel = (label, labelOther) => {
+  if (label === "Other") {
+    const custom = String(labelOther ?? "").trim();
+    return custom || "Other";
+  }
+  return label;
+};
 
 const pageStyles = {
   page: {
@@ -134,7 +153,8 @@ const pageStyles = {
 };
 
 const emptyForm = () => ({
-  label: "",
+  label: "Home",
+  labelOther: "",
   name: "",
   mobile: "",
   line1: "",
@@ -178,8 +198,10 @@ const AddressForm = () => {
           setLoadError("Address not found.");
           return;
         }
+        const { label, labelOther } = parseAddressLabel(found.label);
         setForm({
-          label: String(found.label ?? ""),
+          label,
+          labelOther,
           name: String(found.name ?? ""),
           mobile: normalizeMobileDigits(found.mobile),
           line1: String(found.line1 ?? ""),
@@ -196,7 +218,7 @@ const AddressForm = () => {
           return;
         }
         if (!cancelled) {
-          setLoadError(err?.response?.data?.message || "Unable to load address.");
+          setLoadError(getApiErrorMessage(err, "Unable to load address."));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -225,11 +247,14 @@ const AddressForm = () => {
     if (!city) return "Please enter city.";
     if (!state) return "Please enter state.";
     if (!/^\d{6}$/.test(pin)) return "Enter a valid 6-digit pincode.";
+    if (form.label === "Other" && !String(form.labelOther ?? "").trim()) {
+      return "Please enter a label for Other.";
+    }
     return "";
   };
 
   const buildPayload = () => ({
-    label: String(form.label ?? "").trim() || "Address",
+    label: resolveAddressLabel(form.label, form.labelOther),
     name: String(form.name ?? "").trim(),
     mobile: normalizeMobileDigits(form.mobile),
     line1: String(form.line1 ?? "").trim(),
@@ -263,7 +288,7 @@ const AddressForm = () => {
         navigate("/login");
         return;
       }
-      setFormError(err?.response?.data?.message || "Could not save address.");
+      setFormError(getApiErrorMessage(err, "Could not save address."));
     } finally {
       setSaving(false);
     }
@@ -279,7 +304,7 @@ const AddressForm = () => {
       await client.delete(`/users/me/addresses/${addressId}`);
       navigate("/profile/addresses");
     } catch (err) {
-      setFormError(err?.response?.data?.message || "Could not delete address.");
+      setFormError(getApiErrorMessage(err, "Could not delete address."));
     } finally {
       setDeleting(false);
     }
@@ -320,16 +345,31 @@ const AddressForm = () => {
                 <label style={pageStyles.label} htmlFor="addr-label">
                   Label
                 </label>
-                <input
+                <select
                   id="addr-label"
-                  type="text"
-                  autoComplete="organization"
-                  placeholder="Home, Work…"
                   value={form.label}
                   onChange={(e) => setField("label", e.target.value)}
                   disabled={saving || deleting}
-                  style={pageStyles.input}
-                />
+                  style={{ ...pageStyles.input, cursor: saving || deleting ? "not-allowed" : "pointer" }}
+                >
+                  {ADDRESS_LABEL_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                {form.label === "Other" && (
+                  <input
+                    id="addr-label-other"
+                    type="text"
+                    placeholder="e.g. Office, Parents"
+                    value={form.labelOther}
+                    onChange={(e) => setField("labelOther", e.target.value)}
+                    disabled={saving || deleting}
+                    style={{ ...pageStyles.input, marginTop: "10px" }}
+                    aria-label="Custom label"
+                  />
+                )}
               </div>
               <div>
                 <label style={pageStyles.label} htmlFor="addr-name">

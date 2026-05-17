@@ -17,6 +17,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { alpha } from "@mui/material/styles";
 import { getStoredAccessToken } from "../../Setup/Axios";
 import { useCart } from "../context/CartContext";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors } from "../../theme/theme";
 
 const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -55,7 +56,7 @@ export default function Cart() {
     try {
       await setCartItemQuantity(itemId, nextQty);
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to update quantity.");
+      setActionError(getApiErrorMessage(err, "Unable to update quantity."));
     }
   };
 
@@ -65,7 +66,7 @@ export default function Cart() {
     try {
       await deleteCartItem(itemId);
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to remove item.");
+      setActionError(getApiErrorMessage(err, "Unable to remove item."));
     }
   };
 
@@ -74,7 +75,7 @@ export default function Cart() {
     try {
       await clearWholeCart();
     } catch (err) {
-      setActionError(err?.response?.data?.message || "Unable to clear cart.");
+      setActionError(getApiErrorMessage(err, "Unable to clear cart."));
     }
   };
 

@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { FiCheck, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import client from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const authLayout = {
@@ -210,8 +211,7 @@ const Signup = () => {
     } catch (error) {
       setErrors({
         submit:
-          error.response?.data?.message ||
-          "Registration failed. Please try again.",
+          getApiErrorMessage(error, "Registration failed. Please try again."),
       });
     } finally {
       setLoading(false);
@@ -249,7 +249,7 @@ const Signup = () => {
     } catch (error) {
       setErrors((prev) => ({
         ...prev,
-        otp: error.response?.data?.message || "Invalid OTP. Please try again.",
+        otp: getApiErrorMessage(error, "Invalid OTP. Please try again."),
       }));
     } finally {
       setOtpLoading(false);
@@ -272,8 +272,7 @@ const Signup = () => {
       setErrors((prev) => ({
         ...prev,
         resend:
-          error.response?.data?.message ||
-          "Could not resend OTP. Please try again.",
+          getApiErrorMessage(error, "Could not resend OTP. Please try again."),
       }));
     } finally {
       setResendOtpLoading(false);

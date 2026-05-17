@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchCustomersReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount, formatCurrency } from "./AnalyticsShared";
 
 const CustomersAnalyticsPage = () => {
@@ -30,7 +31,7 @@ const CustomersAnalyticsPage = () => {
           setRows(Array.isArray(top) ? top : []);
         }
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load customer stats.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load customer stats."));
       } finally {
         if (isMounted) setLoading(false);
       }

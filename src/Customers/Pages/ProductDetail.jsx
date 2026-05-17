@@ -12,6 +12,7 @@ import {
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
+import { getApiErrorMessage } from "../../utils/apiError";
 import RecentlyViewedSection from "../components/RecentlyViewedSection";
 
 const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
@@ -63,7 +64,7 @@ export default function ProductDetail() {
       } catch (err) {
         if (cancelled) return;
         setProduct(null);
-        setError(err?.response?.data?.message || err?.message || "Unable to load product details.");
+        setError(getApiErrorMessage(err, "Unable to load product details."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -133,7 +134,7 @@ export default function ProductDetail() {
       await addCartItem({ productId, variantId, quantity: 1 });
       showFeedback("Added to cart.");
     } catch (err) {
-      showFeedback(err?.response?.data?.message || "Unable to add item to cart.", "error");
+      showFeedback(getApiErrorMessage(err, "Unable to add item to cart."), "error");
     }
   };
 
@@ -161,7 +162,7 @@ export default function ProductDetail() {
         setIsWishlisted(true);
         showFeedback("Added to wishlist.");
       } catch (err) {
-        showFeedback(err?.response?.data?.message || "Unable to update wishlist.", "error");
+        showFeedback(getApiErrorMessage(err, "Unable to update wishlist."), "error");
       }
     })();
   };

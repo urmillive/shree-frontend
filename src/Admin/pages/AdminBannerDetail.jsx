@@ -13,6 +13,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -56,7 +57,7 @@ const AdminBannerDetail = () => {
         setError("Unexpected response from server.");
       }
     } catch (error) {
-      setError(error?.response?.data?.message || error?.message || "Failed to load banner.");
+      setError(getApiErrorMessage(error, "Failed to load banner."));
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,7 @@ const AdminBannerDetail = () => {
       await client.delete(`/admin/banners/${encodeURIComponent(bannerId.trim())}`);
       navigate("/admin/homepage-cms/banners");
     } catch (error) {
-      setError(error?.response?.data?.message || error?.message || "Failed to delete banner.");
+      setError(getApiErrorMessage(error, "Failed to delete banner."));
     } finally {
       setLoadingDelete(false);
     }

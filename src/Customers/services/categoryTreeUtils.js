@@ -1,3 +1,13 @@
+/** Works with APIs that expose Mongo `id`, legacy `_id`, or both. */
+export const getCategoryNodeId = (category) => {
+  if (!category || typeof category !== "object") return "";
+  const fromUnderscore = category._id;
+  if (fromUnderscore != null && String(fromUnderscore).trim()) return String(fromUnderscore).trim();
+  const plain = category.id;
+  if (plain != null && String(plain).trim()) return String(plain).trim();
+  return "";
+};
+
 export const buildCategoryTree = (categories) => {
   if (!Array.isArray(categories)) return [];
   const list = categories.filter((item) => item && typeof item === "object");
@@ -8,13 +18,16 @@ export const buildCategoryTree = (categories) => {
 
   const nodeMap = new Map();
   list.forEach((category) => {
-    nodeMap.set(category._id, { ...category, children: [] });
+    const cid = getCategoryNodeId(category);
+    if (!cid) return;
+    nodeMap.set(cid, { ...category, children: [] });
   });
 
   const roots = [];
   nodeMap.forEach((node) => {
-    if (node.parent && nodeMap.has(node.parent)) {
-      nodeMap.get(node.parent).children.push(node);
+    const parentKey = node.parent != null ? String(node.parent).trim() : "";
+    if (parentKey && nodeMap.has(parentKey)) {
+      nodeMap.get(parentKey).children.push(node);
     } else {
       roots.push(node);
     }

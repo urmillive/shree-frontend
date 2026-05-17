@@ -1,5 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { getStoredAccessToken } from "../../Setup/Axios";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AUTH_SESSION_CHANGED_EVENT,
+  getStoredAccessToken,
+  getStoredCustomerAccessToken,
+} from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   addItemToCart,
   clearCart,
@@ -28,11 +33,17 @@ const EMPTY_CART = {
   raw: {},
 };
 
+const cartHasItems = (cartState) => cartState.items.length > 0 || cartState.itemCount > 0;
+
 export function CartProvider({ children }) {
   const [cart, setCart] = useState(EMPTY_CART);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const cartRef = useRef(cart);
+  const wasCustomerAuthenticatedRef = useRef(Boolean(getStoredCustomerAccessToken()));
+
+  cartRef.current = cart;
 
   const reloadCart = useCallback(async () => {
     setLoading(true);
@@ -42,7 +53,7 @@ export function CartProvider({ children }) {
       setCart(normalizeCartPayload(response?.data));
     } catch (err) {
       setCart(EMPTY_CART);
-      setError(err?.response?.data?.message || err?.message || "Unable to load cart.");
+      setError(getApiErrorMessage(err, "Unable to load cart."));
     } finally {
       setLoading(false);
     }
@@ -68,12 +79,43 @@ export function CartProvider({ children }) {
       setCart(normalizeCartPayload(response?.data));
       return response;
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Cart update failed.");
+      setError(getApiErrorMessage(err, "Cart update failed."));
       throw err;
     } finally {
       setBusy(false);
     }
   }, []);
+
+  const mergeCurrentGuestCart = useCallback(
+    async () => runCartMutation(() => mergeGuestCart()),
+    [runCartMutation]
+  );
+
+  useEffect(() => {
+    const handleAuthSessionChange = () => {
+      const isCustomerAuthenticated = Boolean(getStoredCustomerAccessToken());
+      const wasCustomerAuthenticated = wasCustomerAuthenticatedRef.current;
+      wasCustomerAuthenticatedRef.current = isCustomerAuthenticated;
+
+      if (isCustomerAuthenticated && !wasCustomerAuthenticated) {
+        if (cartHasItems(cartRef.current)) {
+          void mergeCurrentGuestCart().catch(() => {
+            void reloadCart();
+          });
+        } else {
+          void reloadCart();
+        }
+        return;
+      }
+
+      if (!isCustomerAuthenticated && wasCustomerAuthenticated) {
+        void reloadCart();
+      }
+    };
+
+    window.addEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChange);
+    return () => window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChange);
+  }, [mergeCurrentGuestCart, reloadCart]);
 
   const addCartItem = useCallback(
     async ({ productId, variantId, quantity = 1 }) =>
@@ -92,11 +134,6 @@ export function CartProvider({ children }) {
   );
 
   const clearWholeCart = useCallback(async () => runCartMutation(() => clearCart()), [runCartMutation]);
-
-  const mergeCurrentGuestCart = useCallback(
-    async () => runCartMutation(() => mergeGuestCart()),
-    [runCartMutation]
-  );
 
   const value = useMemo(
     () => ({

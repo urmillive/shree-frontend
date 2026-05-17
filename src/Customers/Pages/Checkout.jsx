@@ -21,6 +21,7 @@ import { colors } from "../../theme/theme";
 import { extractAddressesFromMeResponse, getAddressId } from "../../utils/addressesApi";
 import { useCart } from "../context/CartContext";
 import { loadRazorpayScript } from "../services/loadRazorpayScript";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   normalizeCustomerOrderPayload,
   pickCustomerOrderNumber,
@@ -71,7 +72,7 @@ export default function Checkout() {
         navigate("/login", { state: { from: { pathname: "/checkout" } } });
         return;
       }
-      setAddressesError(err?.response?.data?.message || "Could not load addresses.");
+      setAddressesError(getApiErrorMessage(err, "Could not load addresses."));
       setAddresses([]);
     } finally {
       setAddressesLoading(false);
@@ -181,7 +182,7 @@ export default function Checkout() {
 
       await openRazorpay(order);
     } catch (err) {
-      setSubmitError(err?.response?.data?.message || err?.message || "Could not place order.");
+      setSubmitError(getApiErrorMessage(err, "Could not place order."));
     } finally {
       setPlacing(false);
     }

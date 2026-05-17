@@ -24,6 +24,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -87,12 +88,10 @@ function formatDate(value) {
   return d.toLocaleString();
 }
 
-const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
-
 function formatAmount(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return value != null ? String(value) : "—";
-  return INR.format(n);
+  return `Rs ${n.toFixed(2)}`;
 }
 
 const AdminOrders = () => {
@@ -132,7 +131,7 @@ const AdminOrders = () => {
     } catch (e) {
       setRows([]);
       setTotal(0);
-      setError(e?.response?.data?.message || e?.message || "Failed to load orders.");
+      setError(getApiErrorMessage(e, "Failed to load orders."));
     } finally {
       setLoading(false);
     }
@@ -157,9 +156,9 @@ const AdminOrders = () => {
         return {
           raw: order,
           orderNumber,
-          customer: order?.customerName ?? order?.user?.name ?? order?.customer?.name ?? order?.shippingAddress?.name ?? "—",
+          customer: order?.customerName ?? order?.user?.name ?? order?.customer?.name ?? order?.shippingAddress?.fullName ?? "—",
           status: String(order?.status ?? "—"),
-          totalAmount: formatAmount(order?.pricing?.total ?? order?.totalAmount ?? order?.total ?? order?.grandTotal),
+          totalAmount: formatAmount(order?.totalAmount ?? order?.total ?? order?.grandTotal),
           createdAt: formatDate(order?.createdAt ?? order?.created_at ?? order?.placedAt),
         };
       }),

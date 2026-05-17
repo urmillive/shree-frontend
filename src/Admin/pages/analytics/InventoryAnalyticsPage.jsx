@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchInventoryReport } from "../../services/analyticsService";
+import { getApiErrorMessage } from "../../../utils/apiError";
 import { ExportButtons, ReportShell, formatCount, formatCurrency } from "./AnalyticsShared";
 
 const InventoryAnalyticsPage = () => {
@@ -20,7 +21,7 @@ const InventoryAnalyticsPage = () => {
         const payload = await fetchInventoryReport();
         if (isMounted) setData(payload || {});
       } catch (e) {
-        if (isMounted) setError(e?.response?.data?.message || e?.message || "Failed to load inventory snapshot.");
+        if (isMounted) setError(getApiErrorMessage(e, "Failed to load inventory snapshot."));
       } finally {
         if (isMounted) setLoading(false);
       }

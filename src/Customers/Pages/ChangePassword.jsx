@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { FiArrowLeft, FiEye, FiEyeOff } from "react-icons/fi";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const authLayout = {
@@ -236,7 +237,7 @@ const ChangePassword = () => {
         navigate("/login");
         return;
       }
-      setChangePasswordErr(err?.response?.data?.message || "Unable to change password.");
+      setChangePasswordErr(getApiErrorMessage(err, "Unable to change password."));
     } finally {
       setChangingPassword(false);
     }

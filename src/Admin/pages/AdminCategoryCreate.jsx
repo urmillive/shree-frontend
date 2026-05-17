@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { createAdminCategory, fetchAdminCategories, flattenCategories, uploadAdminCategoryImageFromFile } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
@@ -94,7 +95,7 @@ const AdminCategoryCreate = () => {
           await uploadAdminCategoryImageFromFile(id, imageSnapshot);
           clearCategoryImage();
         } catch (imgErr) {
-          const msg = imgErr?.response?.data?.message || imgErr?.message || "Image upload failed.";
+          const msg = getApiErrorMessage(imgErr, "Image upload failed.");
           navigate(`/admin/categories/${encodeURIComponent(id)}`, {
             state: {
               imageUploadNotice: `Category was created, but the image could not be uploaded: ${msg} You can try again below.`,
@@ -111,7 +112,7 @@ const AdminCategoryCreate = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to create category.",
+        message: getApiErrorMessage(error, "Failed to create category."),
       });
     } finally {
       setCreating(false);

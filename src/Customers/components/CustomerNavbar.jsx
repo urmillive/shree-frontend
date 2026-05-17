@@ -12,13 +12,30 @@ import {
   IconButton,
   List,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   Toolbar,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { FiHeart, FiHome, FiLogOut, FiMenu, FiShoppingCart, FiUser, FiX } from "react-icons/fi";
+import {
+  FiHeart,
+  FiHome,
+  FiLogIn,
+  FiLogOut,
+  FiMapPin,
+  FiMenu,
+  FiPackage,
+  FiShield,
+  FiShoppingBag,
+  FiShoppingCart,
+  FiUser,
+  FiUserPlus,
+  FiX,
+} from "react-icons/fi";
 import { MdExpandMore } from "react-icons/md";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import client, {
@@ -39,6 +56,9 @@ import { useWishlist } from "../context/WishlistContext";
 
 const drawerWidth = 320;
 
+const navIconSize = 18;
+const navIconBtnSize = 20;
+
 const linkButtonSx = {
   textTransform: "none",
   fontWeight: 600,
@@ -47,7 +67,35 @@ const linkButtonSx = {
   px: 1.25,
   py: 0.5,
   minWidth: 0,
+  gap: 0.75,
   "&:hover": { bgcolor: alpha(colors.primary, 0.08), color: colors.primary },
+};
+
+const drawerListIconSx = {
+  minWidth: 42,
+  color: alpha(colors.text, 0.85),
+};
+
+const accountLinks = [
+  { label: "My profile", to: "/profile", icon: FiUser },
+  { label: "Addresses", to: "/profile/addresses", icon: FiMapPin },
+  { label: "Orders", to: "/orders", icon: FiPackage },
+];
+
+const menuPaperSx = {
+  mt: 1,
+  minWidth: 196,
+  borderRadius: 2,
+  border: `1px solid ${alpha(colors.text, 0.08)}`,
+  boxShadow: `0 12px 40px ${alpha(colors.text, 0.12)}`,
+};
+
+const menuItemSx = {
+  gap: 1.25,
+  py: 1,
+  fontWeight: 600,
+  fontSize: 14,
+  color: colors.text,
 };
 
 const getNodeChildren = (node) => (Array.isArray(node?.children) ? node.children : []);
@@ -137,6 +185,51 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
   );
 }
 
+function UserAccountMenu({ anchorEl, open, onClose, loggedIn, loggingOut, onNavigate, onLogout }) {
+  return (
+    <Menu
+      id="account-menu"
+      anchorEl={anchorEl}
+      open={open}
+      onClose={onClose}
+      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      transformOrigin={{ vertical: "top", horizontal: "right" }}
+      slotProps={{ paper: { sx: menuPaperSx } }}
+    >
+      {loggedIn ? (
+        <>
+          {accountLinks.map(({ label, to, icon: Icon }) => (
+            <MenuItem key={to} onClick={() => onNavigate(to)} sx={menuItemSx}>
+              <Icon size={17} />
+              {label}
+            </MenuItem>
+          ))}
+          <Divider sx={{ my: 0.5 }} />
+          <MenuItem
+            disabled={loggingOut}
+            onClick={() => void onLogout()}
+            sx={{ ...menuItemSx, color: colors.primary }}
+          >
+            <FiLogOut size={17} />
+            {loggingOut ? "Signing out…" : "Log out"}
+          </MenuItem>
+        </>
+      ) : (
+        <>
+          <MenuItem onClick={() => onNavigate("/login")} sx={menuItemSx}>
+            <FiLogIn size={17} />
+            Sign in
+          </MenuItem>
+          <MenuItem onClick={() => onNavigate("/signup")} sx={menuItemSx}>
+            <FiUserPlus size={17} />
+            Create account
+          </MenuItem>
+        </>
+      )}
+    </Menu>
+  );
+}
+
 const CustomerNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -144,6 +237,7 @@ const CustomerNavbar = () => {
   const [loggedIn, setLoggedIn] = useState(() => Boolean(getStoredAccessToken()));
   const [loggingOut, setLoggingOut] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const { cart } = useCart();
   const { wishlist } = useWishlist();
 
@@ -180,7 +274,22 @@ const CustomerNavbar = () => {
     setMobileOpen(false);
   };
 
+  const openUserMenu = (event) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const closeUserMenu = () => {
+    setUserMenuAnchor(null);
+  };
+
+  const handleAccountNav = (to) => {
+    closeUserMenu();
+    closeDrawer();
+    navigate(to);
+  };
+
   const handleLogout = async () => {
+    closeUserMenu();
     setLoggingOut(true);
     closeDrawer();
     try {
@@ -212,88 +321,50 @@ const CustomerNavbar = () => {
         justifyContent: "flex-end",
       }}
     >
-      <Button component={RouterLink} to="/" sx={linkButtonSx}>
+      <Button component={RouterLink} to="/" sx={linkButtonSx} startIcon={<FiHome size={navIconSize} />}>
         Home
       </Button>
-      <Button component={RouterLink} to="/products" sx={linkButtonSx}>
-        Products
+      <Button
+        component={RouterLink}
+        to="/products"
+        sx={linkButtonSx}
+        startIcon={<FiShoppingBag size={navIconSize} />}
+      >
+        Shop
       </Button>
       <IconButton component={RouterLink} to="/cart" color="inherit" aria-label="Cart" size="small">
         <Badge color="primary" badgeContent={cart?.itemCount || 0} max={99}>
-          <FiShoppingCart size={20} />
+          <FiShoppingCart size={navIconBtnSize} />
         </Badge>
       </IconButton>
       {loggedIn ? (
         <IconButton component={RouterLink} to="/wishlist" color="inherit" aria-label="Wishlist" size="small">
           <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
-            <FiHeart size={20} />
+            <FiHeart size={navIconBtnSize} />
           </Badge>
         </IconButton>
       ) : null}
-      {loggedIn ? (
-        <Button component={RouterLink} to="/orders" sx={linkButtonSx}>
-          Orders
-        </Button>
-      ) : null}
-      {loggedIn ? (
-        <Button component={RouterLink} to="/profile" sx={linkButtonSx}>
-          Profile
-        </Button>
-      ) : null}
+      <IconButton
+        color="inherit"
+        aria-label={loggedIn ? "Account menu" : "Sign in or create account"}
+        size="small"
+        onClick={openUserMenu}
+        aria-controls={userMenuAnchor ? "account-menu" : undefined}
+        aria-haspopup="true"
+        aria-expanded={userMenuAnchor ? "true" : undefined}
+      >
+        <FiUser size={navIconBtnSize} />
+      </IconButton>
       {showAdminEntry ? (
-        <Button component={RouterLink} to="/admin/dashboard" sx={{ ...linkButtonSx, color: colors.primary }}>
+        <Button
+          component={RouterLink}
+          to="/admin/dashboard"
+          sx={{ ...linkButtonSx, color: colors.primary }}
+          startIcon={<FiShield size={navIconSize} />}
+        >
           Admin
         </Button>
       ) : null}
-      {!loggedIn ? (
-        <>
-          <Button component={RouterLink} to="/login" sx={linkButtonSx}>
-            Sign in
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/signup"
-            variant="contained"
-            sx={{
-              textTransform: "none",
-              fontWeight: 700,
-              fontSize: 14,
-              ml: 0.5,
-              bgcolor: colors.buttonBackground,
-              color: colors.buttonText,
-              px: 2,
-              boxShadow: "none",
-              "&:hover": {
-                bgcolor: colors.buttonBackground,
-                filter: "brightness(0.94)",
-                boxShadow: `0 4px 14px ${alpha(colors.primary, 0.35)}`,
-              },
-            }}
-          >
-            Create account
-          </Button>
-        </>
-      ) : (
-        <Button
-          variant="outlined"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: 14,
-            ml: 1,
-            borderColor: alpha(colors.primary, 0.45),
-            color: colors.primary,
-            "&:hover": {
-              borderColor: colors.primary,
-              bgcolor: alpha(colors.primary, 0.06),
-            },
-          }}
-        >
-          {loggingOut ? "Signing out…" : "Sign out"}
-        </Button>
-      )}
     </Stack>
   );
 
@@ -310,64 +381,182 @@ const CustomerNavbar = () => {
       <Divider />
       <List dense sx={{ px: 1, pt: 1 }}>
         <ListItemButton component={RouterLink} to="/" onClick={closeDrawer}>
+          <ListItemIcon sx={drawerListIconSx}>
+            <FiHome size={20} />
+          </ListItemIcon>
           <ListItemText primary="Home" primaryTypographyProps={{ fontWeight: 600 }} />
         </ListItemButton>
         <ListItemButton component={RouterLink} to="/products" onClick={closeDrawer}>
-          <ListItemText primary="Products" primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemIcon sx={drawerListIconSx}>
+            <FiShoppingBag size={20} />
+          </ListItemIcon>
+          <ListItemText primary="Shop" primaryTypographyProps={{ fontWeight: 600 }} />
         </ListItemButton>
         <ListItemButton component={RouterLink} to="/cart" onClick={closeDrawer}>
-          <ListItemText primary={`Cart (${cart?.itemCount || 0})`} primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemIcon sx={drawerListIconSx}>
+            <Badge color="primary" badgeContent={cart?.itemCount || 0} max={99}>
+              <FiShoppingCart size={20} />
+            </Badge>
+          </ListItemIcon>
+          <ListItemText primary="Cart" primaryTypographyProps={{ fontWeight: 600 }} />
         </ListItemButton>
-        {loggedIn ? (
-          <ListItemButton component={RouterLink} to="/wishlist" onClick={closeDrawer}>
-            <ListItemText primary={`Wishlist (${wishlist?.total || 0})`} primaryTypographyProps={{ fontWeight: 600 }} />
-          </ListItemButton>
-        ) : null}
-        {loggedIn ? (
-          <ListItemButton component={RouterLink} to="/orders" onClick={closeDrawer}>
-            <ListItemText primary="Orders" primaryTypographyProps={{ fontWeight: 600 }} />
-          </ListItemButton>
-        ) : null}
-        {loggedIn ? (
-          <ListItemButton component={RouterLink} to="/profile" onClick={closeDrawer}>
-            <ListItemText primary="Profile" primaryTypographyProps={{ fontWeight: 600 }} />
-          </ListItemButton>
-        ) : null}
+        <ListItemButton component={RouterLink} to="/wishlist" onClick={closeDrawer}>
+          <ListItemIcon sx={drawerListIconSx}>
+            <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
+              <FiHeart size={20} />
+            </Badge>
+          </ListItemIcon>
+          <ListItemText primary="Wishlist" primaryTypographyProps={{ fontWeight: 600 }} />
+        </ListItemButton>
         {showAdminEntry ? (
           <ListItemButton component={RouterLink} to="/admin/dashboard" onClick={closeDrawer}>
+            <ListItemIcon sx={drawerListIconSx}>
+              <FiShield size={20} />
+            </ListItemIcon>
             <ListItemText primary="Admin dashboard" primaryTypographyProps={{ fontWeight: 600 }} />
           </ListItemButton>
         ) : null}
-        {!loggedIn ? (
-          <>
-            <ListItemButton component={RouterLink} to="/login" onClick={closeDrawer}>
-              <ListItemText primary="Sign in" primaryTypographyProps={{ fontWeight: 600 }} />
-            </ListItemButton>
-            <ListItemButton component={RouterLink} to="/signup" onClick={closeDrawer}>
-              <ListItemText primary="Create account" primaryTypographyProps={{ fontWeight: 600 }} />
-            </ListItemButton>
-          </>
-        ) : (
-          <ListItemButton disabled={loggingOut} onClick={() => void handleLogout()}>
-            <ListItemText
-              primary={loggingOut ? "Signing out…" : "Sign out"}
-              primaryTypographyProps={{ fontWeight: 600 }}
-            />
-          </ListItemButton>
-        )}
       </List>
       <Divider sx={{ my: 1 }} />
       <Box sx={{ px: 1.25 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 0.5, color: alpha(colors.text, 0.8) }}>
-          Categories
-        </Typography>
-        {categoryTree.length > 0 ? (
-          <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
+        {loggedIn ? (
+          <Accordion
+            disableGutters
+            elevation={0}
+            sx={{
+              bgcolor: "transparent",
+              boxShadow: "none",
+              mb: 1,
+              "&::before": { display: "none" },
+            }}
+          >
+            <AccordionSummary
+              expandIcon={<MdExpandMore size={20} />}
+              sx={{
+                px: 0.25,
+                minHeight: 44,
+                "& .MuiAccordionSummary-content": { my: 0.5 },
+              }}
+            >
+              <Typography sx={{ fontWeight: 700, fontSize: 14, color: alpha(colors.text, 0.85) }}>
+                Account
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ pt: 0, pb: 0.5, px: 0 }}>
+              <Stack spacing={0.25}>
+                {accountLinks.map(({ label, to, icon: Icon }) => (
+                  <Button
+                    key={to}
+                    component={RouterLink}
+                    to={to}
+                    onClick={closeDrawer}
+                    startIcon={<Icon size={18} />}
+                    sx={{
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                      fontWeight: 600,
+                      color: colors.text,
+                      pl: 1,
+                      py: 0.75,
+                      minHeight: 0,
+                      borderRadius: 1.2,
+                      "&:hover": { bgcolor: alpha(colors.primary, 0.08) },
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+                <Button
+                  disabled={loggingOut}
+                  onClick={() => void handleLogout()}
+                  startIcon={<FiLogOut size={18} />}
+                  sx={{
+                    justifyContent: "flex-start",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    color: colors.primary,
+                    pl: 1,
+                    py: 0.75,
+                    minHeight: 0,
+                    borderRadius: 1.2,
+                    "&:hover": { bgcolor: alpha(colors.primary, 0.08) },
+                  }}
+                >
+                  {loggingOut ? "Signing out…" : "Log out"}
+                </Button>
+              </Stack>
+            </AccordionDetails>
+          </Accordion>
         ) : (
-          <Typography sx={{ fontSize: 13, color: alpha(colors.text, 0.55), py: 0.6 }}>
-            Categories will appear here soon.
-          </Typography>
+          <Stack spacing={0.75} sx={{ mb: 1.5 }}>
+            <Button
+              component={RouterLink}
+              to="/login"
+              onClick={closeDrawer}
+              variant="outlined"
+              startIcon={<FiLogIn size={18} />}
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                fontWeight: 600,
+                borderColor: alpha(colors.primary, 0.45),
+                color: colors.primary,
+              }}
+            >
+              Sign in
+            </Button>
+            <Button
+              component={RouterLink}
+              to="/signup"
+              onClick={closeDrawer}
+              variant="contained"
+              startIcon={<FiUserPlus size={18} />}
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                fontWeight: 700,
+                bgcolor: colors.buttonBackground,
+                color: colors.buttonText,
+                boxShadow: "none",
+                "&:hover": { bgcolor: colors.buttonBackground, filter: "brightness(0.94)" },
+              }}
+            >
+              Create account
+            </Button>
+          </Stack>
         )}
+        <Accordion
+          disableGutters
+          elevation={0}
+          defaultExpanded
+          sx={{
+            bgcolor: "transparent",
+            boxShadow: "none",
+            "&::before": { display: "none" },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<MdExpandMore size={20} />}
+            sx={{
+              px: 0.25,
+              minHeight: 44,
+              "& .MuiAccordionSummary-content": { my: 0.5 },
+            }}
+          >
+            <Typography sx={{ fontWeight: 700, fontSize: 14, color: alpha(colors.text, 0.85) }}>
+              Categories
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0, pb: 0.5, px: 0 }}>
+            {categoryTree.length > 0 ? (
+              <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
+            ) : (
+              <Typography sx={{ fontSize: 13, color: alpha(colors.text, 0.55), py: 0.6 }}>
+                Categories will appear here soon.
+              </Typography>
+            )}
+          </AccordionDetails>
+        </Accordion>
       </Box>
     </Box>
   );
@@ -469,39 +658,34 @@ const CustomerNavbar = () => {
             direction="row"
             alignItems="center"
             spacing={0}
-            sx={{ display: { xs: "flex", md: "none" }, ml: "auto", flexShrink: 0 }}
+            sx={{
+              display: { xs: "flex", md: "none" },
+              ml: "auto",
+              flexShrink: 0,
+              "& .MuiIconButton-root": { padding: { xs: "6px", sm: "8px" } },
+            }}
           >
-            <IconButton component={RouterLink} to="/" color="inherit" aria-label="Home" size="small">
-              <FiHome size={20} />
-            </IconButton>
             <IconButton component={RouterLink} to="/cart" color="inherit" aria-label="Cart" size="small">
               <Badge color="primary" badgeContent={cart?.itemCount || 0} max={99}>
-                <FiShoppingCart size={18} />
+                <FiShoppingCart size={navIconSize} />
               </Badge>
             </IconButton>
-            {loggedIn ? (
-              <IconButton component={RouterLink} to="/wishlist" color="inherit" aria-label="Wishlist" size="small">
-                <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
-                  <FiHeart size={18} />
-                </Badge>
-              </IconButton>
-            ) : null}
-            {loggedIn ? (
-              <>
-                <IconButton component={RouterLink} to="/profile" color="inherit" aria-label="Profile" size="small">
-                  <FiUser size={20} />
-                </IconButton>
-                <IconButton
-                  color="inherit"
-                  aria-label="Sign out"
-                  size="small"
-                  disabled={loggingOut}
-                  onClick={() => void handleLogout()}
-                >
-                  <FiLogOut size={20} />
-                </IconButton>
-              </>
-            ) : null}
+            <IconButton component={RouterLink} to="/wishlist" color="inherit" aria-label="Wishlist" size="small">
+              <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
+                <FiHeart size={navIconSize} />
+              </Badge>
+            </IconButton>
+            <IconButton
+              color="inherit"
+              aria-label={loggedIn ? "Account menu" : "Sign in or create account"}
+              size="small"
+              onClick={openUserMenu}
+              aria-controls={userMenuAnchor ? "account-menu" : undefined}
+              aria-haspopup="true"
+              aria-expanded={userMenuAnchor ? "true" : undefined}
+            >
+              <FiUser size={navIconSize} />
+            </IconButton>
           </Stack>
 
           {desktopNav}
@@ -524,6 +708,16 @@ const CustomerNavbar = () => {
       >
         {drawer}
       </Drawer>
+
+      <UserAccountMenu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={closeUserMenu}
+        loggedIn={loggedIn}
+        loggingOut={loggingOut}
+        onNavigate={handleAccountNav}
+        onLogout={handleLogout}
+      />
     </>
   );
 };

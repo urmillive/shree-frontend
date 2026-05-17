@@ -14,6 +14,7 @@ import {
   Typography,
 } from "@mui/material";
 import client from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const authLayout = {
@@ -156,8 +157,7 @@ const Resetpassword = () => {
     } catch (error) {
       setErrors({
         submit:
-          error.response?.data?.message ||
-          "Could not reset password. Please try again.",
+          getApiErrorMessage(error, "Could not reset password. Please try again."),
       });
     } finally {
       setLoading(false);

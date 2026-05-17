@@ -14,6 +14,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -61,7 +62,7 @@ const AdminUserDetail = () => {
       } catch (e) {
         if (cancelled) return;
         setUser(null);
-        setError(e?.response?.data?.message || e?.message || "Failed to load user.");
+        setError(getApiErrorMessage(e, "Failed to load user."));
       } finally {
         if (!cancelled) setLoading(false);
       }

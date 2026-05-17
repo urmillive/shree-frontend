@@ -19,6 +19,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -51,7 +52,7 @@ const AdminCategoryGridSections = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load category grid sections.",
+        message: getApiErrorMessage(error, "Failed to load category grid sections."),
       });
     } finally {
       setLoading(false);
