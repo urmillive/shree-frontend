@@ -56,6 +56,7 @@ import Checkout from "../Customers/Pages/Checkout";
 import OrderDetail from "../Customers/Pages/OrderDetail";
 import OrdersList from "../Customers/Pages/OrdersList";
 import Wishlist from "../Customers/Pages/Wishlist";
+import NotFound from "../Customers/Pages/NotFound";
 
 function AppRoutes() {
   return (
@@ -125,6 +126,7 @@ function AppRoutes() {
         <Route path="/admin/analytics/inventory" element={<InventoryAnalyticsPage />} />
         <Route path="/admin/analytics/returns" element={<ReturnsAnalyticsPage />} />
       </Route>
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

@@ -87,10 +87,12 @@ function formatDate(value) {
   return d.toLocaleString();
 }
 
+const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+
 function formatAmount(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return value != null ? String(value) : "—";
-  return `Rs ${n.toFixed(2)}`;
+  return INR.format(n);
 }
 
 const AdminOrders = () => {
@@ -155,9 +157,9 @@ const AdminOrders = () => {
         return {
           raw: order,
           orderNumber,
-          customer: order?.customerName ?? order?.user?.name ?? order?.customer?.name ?? order?.shippingAddress?.fullName ?? "—",
+          customer: order?.customerName ?? order?.user?.name ?? order?.customer?.name ?? order?.shippingAddress?.name ?? "—",
           status: String(order?.status ?? "—"),
-          totalAmount: formatAmount(order?.totalAmount ?? order?.total ?? order?.grandTotal),
+          totalAmount: formatAmount(order?.pricing?.total ?? order?.totalAmount ?? order?.total ?? order?.grandTotal),
           createdAt: formatDate(order?.createdAt ?? order?.created_at ?? order?.placedAt),
         };
       }),

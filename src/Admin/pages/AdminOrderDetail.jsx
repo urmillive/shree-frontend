@@ -123,8 +123,10 @@ const AdminOrderDetail = () => {
     };
   }, [orderNumber]);
 
+  const COMPLEX_KEYS = new Set(["items", "statusHistory", "shippingAddress", "pricing"]);
+
   const orderEntries = useMemo(() => {
-    const entries = Object.entries(order || {}).filter(([k]) => k !== "__v");
+    const entries = Object.entries(order || {}).filter(([k]) => k !== "__v" && !COMPLEX_KEYS.has(k));
     const mid = Math.ceil(entries.length / 2);
     return { left: entries.slice(0, mid), right: entries.slice(mid) };
   }, [order]);
@@ -470,6 +472,77 @@ const AdminOrderDetail = () => {
                   </Stack>
                 </Grid>
               </Grid>
+
+              {/* Shipping address */}
+              {order?.shippingAddress && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6 }}>
+                    Shipping Address
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: "#1f2a24", mt: 0.5 }}>
+                    {[order.shippingAddress.name, order.shippingAddress.mobile, order.shippingAddress.line1, order.shippingAddress.line2, [order.shippingAddress.city, order.shippingAddress.state, order.shippingAddress.pincode].filter(Boolean).join(", "), order.shippingAddress.country].filter(Boolean).join(" · ")}
+                  </Typography>
+                </>
+              )}
+
+              {/* Pricing */}
+              {order?.pricing && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}>
+                    Pricing
+                  </Typography>
+                  <Stack spacing={0.5}>
+                    {Object.entries(order.pricing).map(([k, v]) => (
+                      <Box key={k} sx={{ display: "flex", justifyContent: "space-between" }}>
+                        <Typography variant="body2" sx={{ color: "#6f7f77", textTransform: "capitalize" }}>{k.replace(/([A-Z])/g, " $1").trim()}</Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2a24" }}>₹{Number(v).toLocaleString("en-IN")}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </>
+              )}
+
+              {/* Items */}
+              {Array.isArray(order?.items) && order.items.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}>
+                    Items ({order.items.length})
+                  </Typography>
+                  <Stack spacing={1}>
+                    {order.items.map((item, idx) => (
+                      <Box key={item.variantId ?? idx} sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1 }}>
+                        <Box>
+                          <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2a24" }}>{item.productName}</Typography>
+                          <Typography variant="caption" sx={{ color: "#6f7f77" }}>{item.size} · {item.color?.name} · SKU: {item.sku} · Qty: {item.quantity}</Typography>
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>₹{Number(item.lineTotal).toLocaleString("en-IN")}</Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </>
+              )}
+
+              {/* Status history */}
+              {Array.isArray(order?.statusHistory) && order.statusHistory.length > 0 && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}>
+                    Status History
+                  </Typography>
+                  <Stack spacing={0.75}>
+                    {order.statusHistory.map((h, idx) => (
+                      <Box key={idx} sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, textTransform: "capitalize", minWidth: 110 }}>{h.status}</Typography>
+                        <Typography variant="caption" sx={{ color: "#6f7f77" }}>{h.timestamp ? new Date(h.timestamp).toLocaleString() : "—"}</Typography>
+                        {h.note && <Typography variant="caption" sx={{ color: "#6f7f77", fontStyle: "italic" }}>— {h.note}</Typography>}
+                      </Box>
+                    ))}
+                  </Stack>
+                </>
+              )}
             </Paper>
           </Stack>
         ) : null}
