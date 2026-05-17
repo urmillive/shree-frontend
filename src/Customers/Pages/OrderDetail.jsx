@@ -116,7 +116,7 @@ export default function OrderDetail() {
   const status = String(order?.status ?? order?.orderStatus ?? "—");
   const canCancel = order && !NON_CANCEL.has(String(order?.status ?? "").toLowerCase());
 
-  const grand = Number(order?.grandTotal ?? order?.total ?? order?.totalAmount ?? 0);
+  const grand = Number(order?.pricing?.total ?? order?.grandTotal ?? order?.total ?? order?.totalAmount ?? 0);
 
   const handleCancel = async () => {
     if (!orderNumber) return;

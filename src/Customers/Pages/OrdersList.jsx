@@ -34,7 +34,7 @@ function formatWhen(value) {
 }
 
 function pickTotal(order) {
-  const n = Number(order?.grandTotal ?? order?.total ?? order?.totalAmount ?? order?.amountPayable ?? 0);
+  const n = Number(order?.pricing?.total ?? order?.grandTotal ?? order?.total ?? order?.totalAmount ?? order?.amountPayable ?? 0);
   return Number.isFinite(n) ? n : 0;
 }
 
