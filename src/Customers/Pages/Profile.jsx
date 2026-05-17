@@ -350,13 +350,30 @@ const profilePageScopedCss = `
       flex-direction: column;
       align-items: stretch;
     }
-    .profile-hero-edit-actions {
-      width: 100%;
+  }
+
+  .profile-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 6px;
+    padding-top: 16px;
+    border-top: 1px solid ${blackAlpha(0.1)};
+  }
+  .profile-edit-actions .profile-hero-edit-btn {
+    border-color: ${primaryAlpha(0.45)};
+  }
+  .profile-edit-actions .profile-hero-edit-btn:focus-visible {
+    outline-color: ${primaryAlpha(0.55)};
+  }
+  @media (max-width: 640px) {
+    .profile-edit-actions {
       flex-direction: column;
       align-items: stretch;
     }
-    .profile-hero-edit-actions .profile-hero-edit-btn,
-    .profile-hero-edit-actions .profile-hero-btn {
+    .profile-edit-actions .profile-hero-edit-btn {
       width: 100%;
       justify-content: center;
     }
@@ -870,38 +887,11 @@ const Profile = () => {
               <h1 className="profile-hero-title">{profile.name}</h1>
             )}
             <p style={profilePageStyles.heroEmail}>{profile.email}</p>
-            {isEditing && profileEditErr && (
-              <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: colors.onPrimary }}>
-                {profileEditErr}
-              </p>
-            )}
           </div>
           <div className="profile-hero-actions">
             {/* <span style={profilePageStyles.rolePill}>{profile.role}</span> */}
             {isEditing ? (
-              <div className="profile-hero-actions-inner profile-hero-edit-actions">
-                <button
-                  type="button"
-                  className="profile-hero-edit-btn"
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile || loggingOut}
-                >
-                  <span className="profile-hero-edit-btn-content">
-                    <FiCheck size={18} strokeWidth={2.25} aria-hidden />
-                    {savingProfile ? "Saving…" : "Save"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="profile-hero-edit-btn"
-                  onClick={cancelEditProfile}
-                  disabled={savingProfile}
-                >
-                  <span className="profile-hero-edit-btn-content">
-                    <FiX size={18} strokeWidth={2.25} aria-hidden />
-                    Cancel
-                  </span>
-                </button>
+              <div className="profile-hero-actions-inner">
                 <button
                   type="button"
                   className="profile-hero-btn"
@@ -1140,6 +1130,36 @@ const Profile = () => {
             <StatusBadge label="Mobile Verified" ok={profile.isMobileVerified} />
             {/* <StatusBadge label="Account Active" ok={profile.isActive} /> */}
           </div>
+
+          {isEditing && (
+            <>
+              <div className="profile-edit-actions">
+                <button
+                  type="button"
+                  className="profile-hero-edit-btn profile-edit-save-btn"
+                  onClick={handleSaveProfile}
+                  disabled={savingProfile || loggingOut}
+                >
+                  <span className="profile-hero-edit-btn-content">
+                    <FiCheck size={18} strokeWidth={2.25} aria-hidden />
+                    {savingProfile ? "Saving…" : "Save"}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  className="profile-hero-edit-btn profile-edit-cancel-btn"
+                  onClick={cancelEditProfile}
+                  disabled={savingProfile}
+                >
+                  <span className="profile-hero-edit-btn-content">
+                    <FiX size={18} strokeWidth={2.25} aria-hidden />
+                    Cancel
+                  </span>
+                </button>
+              </div>
+              {profileEditErr && <p style={profilePageStyles.message}>{profileEditErr}</p>}
+            </>
+          )}
 
           {!profile.isEmailVerified && !isEditing && (
             <div style={profilePageStyles.section}>
