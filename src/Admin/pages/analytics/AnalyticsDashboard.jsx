@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Typography } from "@mui/material";
 import AdminNavbar from "../../components/AdminNavbar";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
+import { pageBg } from "../../components/adminListTheme";
 import { AnalyticsCards } from "./AnalyticsShared";
 
 const AnalyticsDashboard = () => {
@@ -15,7 +16,7 @@ const AnalyticsDashboard = () => {
   ];
 
   return (
-    <Box sx={{ minHeight: "100dvh", bgcolor: "#fff" }}>
+    <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
       <Box sx={{ maxWidth: 1150, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
         <AdminBreadcrumb items={[{ label: "Dashboard", to: "/admin/dashboard" }, { label: "Analytics" }]} />
@@ -23,7 +24,7 @@ const AnalyticsDashboard = () => {
           Analytics Reports
         </Typography>
         <Typography sx={{ mb: 2.25, color: "#596861" }}>
-          Choose any report below. All reports support CSV and PDF exports.
+          Choose any report below. All reports support sorting, filtering, and CSV export.
         </Typography>
         <AnalyticsCards cards={cards} />
       </Box>

@@ -1,17 +1,60 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Box } from "@mui/material";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, Box, Stack, TableCell, TablePagination, TableRow, Typography } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
+import AdminActiveFilterChips from "../../components/AdminActiveFilterChips";
+import AdminFilterDateField from "../../components/AdminFilterDateField";
+import AdminListTable from "../../components/AdminListTable";
+import AdminListSelectionToolbar from "../../components/AdminListSelectionToolbar";
+import AdminMergedSearchField from "../../components/AdminMergedSearchField";
+import AdminRowSelectCell from "../../components/AdminRowSelectCell";
+import { pageBg } from "../../components/adminListTheme";
+import { useAdminMergedSearch } from "../../hooks/useAdminMergedSearch";
+import { useAdminRowSelection } from "../../hooks/useAdminRowSelection";
+import { useAdminTableSort } from "../../hooks/useAdminTableSort";
+import { exportListToCsv } from "../../utils/exportAdminListCsv";
 import { fetchOrdersReport } from "../../services/analyticsService";
 import { getApiErrorMessage } from "../../../utils/apiError";
-import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount } from "./AnalyticsShared";
+import { formatCount } from "./AnalyticsShared";
+import { buildDateFilterChips, getAnalyticsDefaultDateRange, getAnalyticsSortValue, useClientPagedSortedRows } from "./analyticsListUtils";
+
+const { from: DEFAULT_FROM, to: DEFAULT_TO } = getAnalyticsDefaultDateRange();
+
+const SEARCH_BY_OPTIONS = [{ value: "status", label: "Status", placeholder: "Enter order status" }];
+
+const TABLE_COLUMNS = [
+  { id: "status", label: "Order Status" },
+  { id: "count", label: "Orders" },
+];
+
+const getRowId = (row) => String(row?.status ?? "");
 
 const OrdersAnalyticsPage = () => {
-  const [from, setFrom] = useState("2024-01-01");
-  const [to, setTo] = useState("2024-01-31");
+  const [from, setFrom] = useState(DEFAULT_FROM);
+  const [to, setTo] = useState(DEFAULT_TO);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const { sortBy, sortOrder, handleSort } = useAdminTableSort({ defaultSortBy: "count", defaultSortOrder: "desc" });
+  const selection = useAdminRowSelection();
+
+  const {
+    searchTypeInput,
+    setSearchTypeInput,
+    searchInput,
+    setSearchInput,
+    searchApplied,
+    handleSearch,
+    getSearchChip,
+    searchPlaceholder,
+  } = useAdminMergedSearch({
+    defaultSearchType: "status",
+    searchOptions: SEARCH_BY_OPTIONS,
+    onApply: () => setPage(0),
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -21,9 +64,19 @@ const OrdersAnalyticsPage = () => {
       try {
         const payload = await fetchOrdersReport({ from, to });
         const list = Array.isArray(payload) ? payload : payload?.breakdown || payload?.statuses || payload?.items || [];
-        if (isMounted) setRows(list);
+        if (!isMounted) return;
+        setRows(
+          list.map((row) => ({
+            status: row.status || row.orderStatus || "unknown",
+            count: Number(row.count ?? row.total ?? row.orders ?? 0),
+          }))
+        );
+        setPage(0);
       } catch (e) {
-        if (isMounted) setError(getApiErrorMessage(e, "Failed to load order breakdown."));
+        if (isMounted) {
+          setRows([]);
+          setError(getApiErrorMessage(e, "Failed to load order breakdown."));
+        }
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -34,40 +87,166 @@ const OrdersAnalyticsPage = () => {
     };
   }, [from, to]);
 
-  const normalizedRows = rows.map((row) => ({
-    status: row.status || row.orderStatus || "unknown",
-    count: Number(row.count ?? row.total ?? row.orders ?? 0),
-  }));
-  const totalOrders = useMemo(() => normalizedRows.reduce((acc, row) => acc + row.count, 0), [normalizedRows]);
+  const matchesSearch = useMemo(() => {
+    const term = searchApplied.trim().toLowerCase();
+    if (!term) return null;
+    return (row) => String(row.status ?? "").toLowerCase().includes(term);
+  }, [searchApplied]);
 
-  const columns = [
-    { key: "status", label: "Order Status" },
-    { key: "count", label: "Orders", render: (value) => formatCount(value) },
-  ];
+  const { sortedRows, paginatedRows, total } = useClientPagedSortedRows(rows, {
+    sortBy,
+    sortOrder,
+    getSortValue: getAnalyticsSortValue,
+    page,
+    rowsPerPage,
+    matchesSearch,
+  });
+
+  const totalOrders = useMemo(() => sortedRows.reduce((acc, row) => acc + row.count, 0), [sortedRows]);
+
+  const activeFilters = useMemo(() => {
+    const chips = buildDateFilterChips({
+      from,
+      to,
+      defaultFrom: DEFAULT_FROM,
+      defaultTo: DEFAULT_TO,
+      onClearFrom: () => {
+        setFrom(getAnalyticsDefaultDateRange().from);
+        setPage(0);
+      },
+      onClearTo: () => {
+        setTo(getAnalyticsDefaultDateRange().to);
+        setPage(0);
+      },
+    });
+    const searchChip = getSearchChip(() => setPage(0));
+    if (searchChip) chips.push(searchChip);
+    return chips;
+  }, [from, to, getSearchChip]);
+
+  const exportColumns = useMemo(
+    () => [
+      { id: "status", label: "Order Status" },
+      { id: "count", label: "Orders", getValue: (row) => formatCount(row.count) },
+    ],
+    []
+  );
+
+  const handleExport = useCallback(() => {
+    const rowsToExport =
+      selection.selectedCount > 0 ? selection.filterSelectedRows(sortedRows, getRowId) : sortedRows;
+    exportListToCsv({
+      filename: `order-status-${new Date().toISOString().slice(0, 10)}.csv`,
+      exportColumns,
+      rows: rowsToExport,
+    });
+  }, [exportColumns, selection, sortedRows]);
+
+  const visibleRowIds = useMemo(() => paginatedRows.map(getRowId).filter(Boolean), [paginatedRows]);
+  const headerCheckbox = selection.getHeaderCheckboxState(visibleRowIds);
 
   return (
-    <Box sx={{ minHeight: "100dvh", bgcolor: "#fff" }}>
+    <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
-      <Box sx={{ maxWidth: 1150, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
-        <AdminBreadcrumb items={[{ label: "Dashboard", to: "/admin/dashboard" }, { label: "Analytics", to: "/admin/analytics" }, { label: "Orders" }]} />
-        <ReportShell
-          title="Order Status Breakdown"
-          subtitle={`Total orders: ${formatCount(totalOrders)}`}
-          error={error}
-          actions={
-            <ExportButtons
-              csvName="order-status-report.csv"
-              pdfName="order-status-report.pdf"
-              pdfTitle="Order Status Breakdown"
-              rows={normalizedRows}
-              columns={columns}
-              filters={[`From: ${from}`, `To: ${to}`]}
+      <Box sx={{ maxWidth: 1100, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
+        <AdminBreadcrumb
+          items={[
+            { label: "Dashboard", to: "/admin/dashboard" },
+            { label: "Analytics", to: "/admin/analytics" },
+            { label: "Orders" },
+          ]}
+        />
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5 }}>
+          Order Status Breakdown
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#5f6d66", mb: 2 }}>
+          Total orders: {formatCount(totalOrders)}
+        </Typography>
+
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }} alignItems={{ sm: "center" }} flexWrap="wrap" useFlexGap>
+          <AdminMergedSearchField
+            searchOptions={SEARCH_BY_OPTIONS}
+            searchTypeInput={searchTypeInput}
+            onSearchTypeChange={setSearchTypeInput}
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            onSearch={handleSearch}
+            placeholder={searchPlaceholder}
+            sx={{ maxWidth: { sm: 400 }, flex: { sm: "1 1 300px" } }}
+          />
+          <AdminFilterDateField
+            label="From"
+            value={from}
+            onChange={(e) => {
+              setFrom(e.target.value);
+              setPage(0);
+            }}
+          />
+          <AdminFilterDateField
+            label="To"
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              setPage(0);
+            }}
+          />
+        </Stack>
+
+        <AdminActiveFilterChips filters={activeFilters} />
+
+        {error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : null}
+
+        <AdminListSelectionToolbar
+          selectedCount={selection.selectedCount}
+          totalVisible={paginatedRows.length}
+          onExport={handleExport}
+          onClearSelection={selection.clearSelection}
+        />
+
+        <AdminListTable
+          columns={TABLE_COLUMNS}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          loading={loading}
+          isEmpty={!loading && paginatedRows.length === 0}
+          emptyMessage="No order status data for selected range."
+          selectable
+          allSelected={headerCheckbox.checked}
+          indeterminate={headerCheckbox.indeterminate}
+          onToggleSelectAll={() => selection.selectAllVisible(visibleRowIds)}
+          selectAllDisabled={loading || paginatedRows.length === 0}
+          pagination={
+            <TablePagination
+              component="div"
+              count={total}
+              page={page}
+              onPageChange={(_, p) => setPage(p)}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+              rowsPerPageOptions={[5, 10, 25, 50]}
             />
           }
         >
-          <DateFilterBar from={from} to={to} onFrom={setFrom} onTo={setTo} />
-          <AnalyticsTable columns={columns} rows={normalizedRows} loading={loading} emptyText="No order status data for selected range." />
-        </ReportShell>
+          {paginatedRows.map((row) => {
+            const rowId = getRowId(row);
+            const checked = selection.isSelected(rowId);
+            return (
+              <TableRow key={rowId} hover selected={checked}>
+                <AdminRowSelectCell checked={checked} disabled={!rowId} onChange={() => selection.toggleRow(rowId)} />
+                <TableCell sx={{ color: "#1f2a24" }}>{row.status}</TableCell>
+                <TableCell sx={{ color: "#1f2a24" }}>{formatCount(row.count)}</TableCell>
+              </TableRow>
+            );
+          })}
+        </AdminListTable>
       </Box>
     </Box>
   );
