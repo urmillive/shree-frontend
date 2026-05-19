@@ -111,7 +111,7 @@ const AdminOrderDetail = () => {
       } catch (e) {
         if (cancelled) return;
         setOrder(null);
-        setError(e?.response?.data?.message || e?.message || "Failed to load order.");
+        setError(e?.response?.data?.error?.message || e?.response?.data?.message || e?.message || "Failed to load order.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -164,7 +164,7 @@ const AdminOrderDetail = () => {
       setActionSuccess("Order status updated successfully.");
       setNoteDraft("");
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to update order status.");
+      setActionError(e?.response?.data?.error?.message || e?.response?.data?.message || e?.message || "Failed to update order status.");
     } finally {
       setSaving(false);
     }
@@ -205,7 +205,7 @@ const AdminOrderDetail = () => {
       if (action === "track") setActionSuccess("Shipment tracking details fetched successfully.");
       if (action === "cancel") setActionSuccess("Shipment cancelled successfully on Shiprocket.");
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Shipping action failed.");
+      setActionError(e?.response?.data?.error?.message || e?.response?.data?.message || e?.message || "Shipping action failed.");
     } finally {
       setShippingBusy("");
     }
