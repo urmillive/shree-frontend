@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, IconButton, Typography, useMediaQuery } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Box, CircularProgress, IconButton, Stack, Typography, useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { colors } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 import {
   fetchHomepageBannersByPlacement,
   getBannerDesktopImageUrl,
@@ -11,7 +11,7 @@ import {
   normalizeHomepageBannersPayload,
 } from "../services/publicBannersService";
 
-const AUTO_SLIDE_MS = 5000;
+const AUTO_SLIDE_MS = 6500;
 
 const HomepageBannerSlider = ({ placement = "hero" }) => {
   const theme = useTheme();
@@ -29,14 +29,23 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     fetchHomepageBannersByPlacement(placement)
       .then((res) => {
         if (cancelled) return;
-        const list = normalizeHomepageBannersPayload(res?.data).filter((banner) => banner?.isActive !== false);
-        list.sort((a, b) => (Number(a?.displayOrder) || 0) - (Number(b?.displayOrder) || 0));
+        const list = normalizeHomepageBannersPayload(res?.data).filter(
+          (banner) => banner?.isActive !== false
+        );
+        list.sort(
+          (a, b) => (Number(a?.displayOrder) || 0) - (Number(b?.displayOrder) || 0)
+        );
         setBanners(list);
         setCurrentIndex(0);
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.response?.data?.message || err?.message || "Could not load banners.");
+        setError(
+          err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "Could not load banners."
+        );
         setBanners([]);
       })
       .finally(() => {
@@ -71,20 +80,20 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     return () => window.clearInterval(timer);
   }, [total]);
 
+  const heroHeight = { xs: 480, sm: 600, md: 680 };
+
   if (loading) {
     return (
       <Box
         component="section"
         sx={{
-          borderRadius: 2,
-          minHeight: { xs: 180, sm: 260 },
+          minHeight: heroHeight,
           display: "grid",
           placeItems: "center",
-          bgcolor: alpha(colors.primary, 0.06),
-          mb: { xs: 2, sm: 3 },
+          bgcolor: colors.stone,
         }}
       >
-        <CircularProgress size={34} sx={{ color: colors.primary }} aria-label="Loading banners" />
+        <CircularProgress size={28} sx={{ color: colors.ink }} />
       </Box>
     );
   }
@@ -94,53 +103,161 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
       <Box
         component="section"
         sx={{
-          borderRadius: 2,
-          minHeight: { xs: 150, sm: 180 },
+          minHeight: { xs: 380, sm: 480 },
           display: "grid",
           placeItems: "center",
-          bgcolor: alpha(colors.primary, 0.04),
-          mb: { xs: 2, sm: 3 },
-          px: 2,
+          bgcolor: colors.stone,
+          px: 3,
+          textAlign: "center",
         }}
       >
-        <Typography variant="body2" sx={{ color: alpha(colors.text, 0.6), textAlign: "center" }}>
-          {error || "Banners will appear here soon."}
-        </Typography>
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              color: colors.muted,
+              mb: 1.5,
+            }}
+          >
+            Shree Gallery
+          </Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 36, sm: 56 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+              mb: 2,
+            }}
+          >
+            Considered fashion,
+            <br />
+            crafted slow.
+          </Typography>
+          <Typography sx={{ color: colors.muted, fontSize: 13.5 }}>
+            {error || "Editorial banners will appear here soon."}
+          </Typography>
+        </Box>
       </Box>
     );
   }
 
-  const preferred = isMobile ? getBannerMobileImageUrl(activeBanner) : getBannerDesktopImageUrl(activeBanner);
-  const fallback = isMobile ? getBannerDesktopImageUrl(activeBanner) : getBannerMobileImageUrl(activeBanner);
+  const preferred = isMobile
+    ? getBannerMobileImageUrl(activeBanner)
+    : getBannerDesktopImageUrl(activeBanner);
+  const fallback = isMobile
+    ? getBannerDesktopImageUrl(activeBanner)
+    : getBannerMobileImageUrl(activeBanner);
   const imageUrl = preferred || fallback;
   const targetUrl = getBannerTargetUrl(activeBanner);
-  const title = activeBanner?.title ? String(activeBanner.title) : "Homepage banner";
+  const title = activeBanner?.title ? String(activeBanner.title) : "";
   const subtitle = activeBanner?.subtitle ? String(activeBanner.subtitle) : "";
 
-  const image = (
-    <Box
-      component="img"
-      src={imageUrl}
-      alt={title}
-      sx={{
-        width: "100%",
-        height: { xs: 190, sm: 300, md: 340 },
-        objectFit: "cover",
-        display: "block",
-      }}
-    />
-  );
-
   return (
-    <Box component="section" sx={{ mb: { xs: 2, sm: 3 } }}>
-      <Box sx={{ position: "relative", borderRadius: 2, overflow: "hidden", bgcolor: colors.mutedSurface }}>
-        {targetUrl ? (
-          <Box component="a" href={targetUrl} sx={{ display: "block", textDecoration: "none" }}>
-            {image}
-          </Box>
-        ) : (
-          image
-        )}
+    <Box component="section" sx={{ position: "relative" }}>
+      <Box sx={{ position: "relative", overflow: "hidden", bgcolor: colors.stone }}>
+        <Box
+          component={targetUrl ? "a" : "div"}
+          href={targetUrl || undefined}
+          sx={{
+            display: "block",
+            textDecoration: "none",
+            color: "inherit",
+            position: "relative",
+          }}
+        >
+          <Box
+            component="img"
+            src={imageUrl}
+            alt={title || "Editorial banner"}
+            sx={{
+              width: "100%",
+              height: heroHeight,
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+
+          {/* Editorial overlay */}
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.25) 100%)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {(title || subtitle) && (
+            <Box
+              sx={{
+                position: "absolute",
+                left: { xs: 24, sm: 48, md: 80 },
+                right: { xs: 24, sm: 48 },
+                bottom: { xs: 40, sm: 64, md: 88 },
+                color: colors.ivory,
+                maxWidth: 640,
+              }}
+            >
+              {subtitle ? (
+                <Typography
+                  sx={{
+                    fontFamily: fonts.body,
+                    fontSize: 11,
+                    letterSpacing: "0.28em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
+                    color: colors.ivory,
+                    opacity: 0.92,
+                    mb: 2,
+                  }}
+                >
+                  {subtitle}
+                </Typography>
+              ) : null}
+              {title ? (
+                <Typography
+                  component="h1"
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: { xs: 34, sm: 56, md: 72 },
+                    fontWeight: 500,
+                    color: colors.ivory,
+                    letterSpacing: "-0.01em",
+                    lineHeight: 1.05,
+                  }}
+                >
+                  {title}
+                </Typography>
+              ) : null}
+              {targetUrl ? (
+                <Typography
+                  sx={{
+                    mt: 3,
+                    fontFamily: fonts.body,
+                    fontSize: 11,
+                    letterSpacing: "0.28em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
+                    color: colors.ivory,
+                    display: "inline-block",
+                    borderBottom: `1px solid ${colors.ivory}`,
+                    pb: 0.5,
+                  }}
+                >
+                  Discover →
+                </Typography>
+              ) : null}
+            </Box>
+          )}
+        </Box>
 
         {total > 1 ? (
           <>
@@ -149,56 +266,74 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
               aria-label="Previous banner"
               sx={{
                 position: "absolute",
-                left: 10,
+                left: { xs: 8, sm: 24 },
                 top: "50%",
                 transform: "translateY(-50%)",
-                bgcolor: alpha("#000", 0.4),
-                color: "#fff",
-                "&:hover": { bgcolor: alpha("#000", 0.58) },
+                bgcolor: "transparent",
+                color: colors.ivory,
+                border: `1px solid ${colors.ivory}`,
+                width: 40,
+                height: 40,
+                borderRadius: 0,
+                "&:hover": {
+                  bgcolor: colors.ivory,
+                  color: colors.ink,
+                },
               }}
             >
-              <FiChevronLeft size={22} />
+              <FiChevronLeft size={18} />
             </IconButton>
             <IconButton
               onClick={goNext}
               aria-label="Next banner"
               sx={{
                 position: "absolute",
-                right: 10,
+                right: { xs: 8, sm: 24 },
                 top: "50%",
                 transform: "translateY(-50%)",
-                bgcolor: alpha("#000", 0.4),
-                color: "#fff",
-                "&:hover": { bgcolor: alpha("#000", 0.58) },
+                bgcolor: "transparent",
+                color: colors.ivory,
+                border: `1px solid ${colors.ivory}`,
+                width: 40,
+                height: 40,
+                borderRadius: 0,
+                "&:hover": {
+                  bgcolor: colors.ivory,
+                  color: colors.ink,
+                },
               }}
             >
-              <FiChevronRight size={22} />
+              <FiChevronRight size={18} />
             </IconButton>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                position: "absolute",
+                bottom: 16,
+                left: "50%",
+                transform: "translateX(-50%)",
+              }}
+            >
+              {banners.map((_, i) => (
+                <Box
+                  key={i}
+                  onClick={() => setCurrentIndex(i)}
+                  sx={{
+                    width: i === currentIndex ? 24 : 12,
+                    height: 2,
+                    bgcolor: colors.ivory,
+                    opacity: i === currentIndex ? 1 : 0.5,
+                    cursor: "pointer",
+                    transition: "width 240ms cubic-bezier(0.2,0.7,0.2,1)",
+                  }}
+                />
+              ))}
+            </Stack>
           </>
         ) : null}
       </Box>
-
-      {(title || subtitle || total > 1) && (
-        <Box sx={{ mt: 1.25, px: 0.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-          <Box sx={{ minWidth: 0 }}>
-            {title ? (
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-                {title}
-              </Typography>
-            ) : null}
-            {subtitle ? (
-              <Typography variant="body2" sx={{ color: alpha(colors.text, 0.62), lineHeight: 1.35 }}>
-                {subtitle}
-              </Typography>
-            ) : null}
-          </Box>
-          {total > 1 ? (
-            <Typography variant="caption" sx={{ color: alpha(colors.text, 0.62), whiteSpace: "nowrap" }}>
-              {currentIndex + 1}/{total}
-            </Typography>
-          ) : null}
-        </Box>
-      )}
     </Box>
   );
 };

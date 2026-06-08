@@ -1,75 +1,113 @@
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Breadcrumbs, Link, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { colors } from "../../theme/theme";
+import { Box, Typography } from "@mui/material";
+import { colors, fonts } from "../../theme/theme";
 
-/**
- * Renders server breadcrumb items: [{ name, slug }, ...].
- * Last segment is the current page (not linked).
- */
+const linkSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
+  textDecoration: "none",
+  transition: "color 200ms cubic-bezier(0.2,0.7,0.2,1)",
+  "&:hover": { color: colors.ink },
+};
+
+const Separator = () => (
+  <Box
+    component="span"
+    sx={{
+      mx: 1.25,
+      color: colors.muted,
+      opacity: 0.6,
+      fontSize: 11,
+    }}
+  >
+    /
+  </Box>
+);
+
 const CategoryBreadcrumb = ({ items = [] }) => {
   const list = Array.isArray(items) ? items : [];
 
   return (
-    <Breadcrumbs
+    <Box
+      component="nav"
       aria-label="Category breadcrumb"
-      separator="›"
       sx={{
-        mb: 2,
+        mb: 3,
+        display: "flex",
         flexWrap: "wrap",
-        "& .MuiBreadcrumbs-separator": {
-          color: alpha(colors.text, 0.45),
-          fontSize: 15,
-        },
+        alignItems: "center",
       }}
     >
-      <Link component={RouterLink} to="/" underline="hover" sx={{ color: colors.primary, fontWeight: 600, fontSize: 14 }}>
+      <Box component={RouterLink} to="/" sx={linkSx}>
         Home
-      </Link>
-      <Link
-        component={RouterLink}
-        to="/categories"
-        underline="hover"
-        sx={{ color: colors.primary, fontWeight: 600, fontSize: 14 }}
-      >
+      </Box>
+      <Separator />
+      <Box component={RouterLink} to="/categories" sx={linkSx}>
         All categories
-      </Link>
+      </Box>
+
       {list.map((crumb, index) => {
         const isLast = index === list.length - 1;
-        const name = crumb?.name != null && String(crumb.name).trim() ? String(crumb.name).trim() : "Category";
+        const name =
+          crumb?.name != null && String(crumb.name).trim()
+            ? String(crumb.name).trim()
+            : "Category";
         const slug =
-          crumb?.slug != null && String(crumb.slug).trim() ? String(crumb.slug).trim() : "";
+          crumb?.slug != null && String(crumb.slug).trim()
+            ? String(crumb.slug).trim()
+            : "";
 
         if (isLast) {
           return (
-            <Typography key={`${slug || "leaf"}-${index}`} sx={{ fontWeight: 700, fontSize: 14, color: colors.text }}>
-              {name}
-            </Typography>
+            <Box
+              key={`${slug || "leaf"}-${index}`}
+              sx={{ display: "flex", alignItems: "center" }}
+            >
+              <Separator />
+              <Typography
+                sx={{
+                  fontFamily: fonts.body,
+                  fontSize: 11,
+                  letterSpacing: "0.18em",
+                  textTransform: "uppercase",
+                  fontWeight: 500,
+                  color: colors.ink,
+                }}
+              >
+                {name}
+              </Typography>
+            </Box>
           );
         }
 
         if (!slug) {
           return (
-            <Typography key={`n-${index}`} sx={{ fontWeight: 600, fontSize: 14, color: alpha(colors.text, 0.72) }}>
-              {name}
-            </Typography>
+            <Box key={`n-${index}`} sx={{ display: "flex", alignItems: "center" }}>
+              <Separator />
+              <Typography sx={{ ...linkSx, cursor: "default" }}>{name}</Typography>
+            </Box>
           );
         }
 
         return (
-          <Link
-            key={slug}
-            component={RouterLink}
-            to={`/categories/${encodeURIComponent(slug)}`}
-            underline="hover"
-            sx={{ color: colors.primary, fontWeight: 600, fontSize: 14 }}
-          >
-            {name}
-          </Link>
+          <Box key={slug} sx={{ display: "flex", alignItems: "center" }}>
+            <Separator />
+            <Box
+              component={RouterLink}
+              to={`/categories/${encodeURIComponent(slug)}`}
+              sx={linkSx}
+            >
+              {name}
+            </Box>
+          </Box>
         );
       })}
-    </Breadcrumbs>
+    </Box>
   );
 };
 

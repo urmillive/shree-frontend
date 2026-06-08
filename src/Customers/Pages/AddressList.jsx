@@ -1,165 +1,80 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiEdit2, FiMapPin, FiPlus, FiTrash2 } from "react-icons/fi";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Grid,
+  IconButton,
+  Skeleton,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { FiEdit2, FiPlus, FiTrash2 } from "react-icons/fi";
 import client from "../../Setup/Axios";
-import { colors, primaryAlpha, blackAlpha } from "../../theme/theme";
-import { extractAddressesFromMeResponse, getAddressId } from "../../utils/addressesApi";
+import { colors, fonts } from "../../theme/theme";
+import {
+  extractAddressesFromMeResponse,
+  getAddressId,
+} from "../../utils/addressesApi";
 
-const pageStyles = {
-  page: {
-    flex: 1,
-    width: "100%",
-    minHeight: "100%",
-    background: colors.background,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "flex-start",
-    padding: "24px",
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    color: colors.text,
-  },
-  card: {
-    width: "100%",
-    maxWidth: "720px",
-    background: colors.background,
-    border: `1px solid ${blackAlpha(0.12)}`,
-    borderRadius: "20px",
-    boxShadow: `0 20px 45px ${blackAlpha(0.08)}`,
-    overflow: "hidden",
-  },
-  hero: {
-    background: colors.primary,
-    color: colors.onPrimary,
-    padding: "22px 26px",
-    display: "flex",
-    alignItems: "center",
-    gap: "14px",
-    flexWrap: "wrap",
-  },
-  heroTitle: {
-    margin: 0,
-    fontSize: "22px",
-    fontWeight: 700,
-    flex: "1 1 auto",
-  },
-  body: {
-    padding: "22px 26px 28px",
-    display: "grid",
-    gap: "14px",
-  },
-  backBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "42px",
-    height: "42px",
-    padding: 0,
-    borderRadius: "12px",
-    border: `1px solid rgba(255,255,255,0.5)`,
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    cursor: "pointer",
-    flexShrink: 0,
-  },
-  addBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "8px",
-    padding: "10px 16px",
-    borderRadius: "10px",
-    border: `1px solid rgba(255,255,255,0.5)`,
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    fontWeight: 700,
-    fontSize: "14px",
-    cursor: "pointer",
-    fontFamily: "inherit",
-  },
-  addressCard: {
-    border: `1px solid ${blackAlpha(0.12)}`,
-    borderRadius: "14px",
-    padding: "16px",
-    background: colors.background,
-    display: "grid",
-    gap: "10px",
-  },
-  rowTop: {
-    display: "flex",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: "12px",
-  },
-  labelRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    flexWrap: "wrap",
-  },
-  labelPill: {
-    fontWeight: 700,
-    fontSize: "15px",
-    margin: 0,
-  },
-  defaultBadge: {
-    fontSize: "11px",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.04em",
-    padding: "4px 8px",
-    borderRadius: "999px",
-    border: `1px solid ${primaryAlpha(0.45)}`,
-    background: primaryAlpha(0.08),
-    color: colors.text,
-  },
-  actions: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    flexShrink: 0,
-  },
-  iconBtn: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "40px",
-    height: "40px",
-    borderRadius: "10px",
-    border: `1px solid ${blackAlpha(0.14)}`,
-    background: colors.background,
-    color: colors.text,
-    cursor: "pointer",
-  },
-  lines: {
-    margin: 0,
-    fontSize: "14px",
-    lineHeight: 1.5,
-    color: colors.text,
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-  },
-  muted: {
-    margin: 0,
-    fontSize: "13px",
-    color: blackAlpha(0.65),
-  },
-  empty: {
-    textAlign: "center",
-    padding: "28px 12px",
-    color: blackAlpha(0.7),
-    fontSize: "15px",
-  },
-  primaryBtn: {
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    border: "none",
-    borderRadius: "10px",
-    padding: "12px 18px",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: "14px",
-    fontFamily: "inherit",
-  },
+const eyebrowSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.28em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
 };
+
+const accountLinks = [
+  { label: "Profile", to: "/profile" },
+  { label: "Orders", to: "/orders" },
+  { label: "Addresses", to: "/profile/addresses" },
+  { label: "Wishlist", to: "/wishlist" },
+  { label: "Change password", to: "/profile/change-password" },
+];
+
+function AccountSidebar({ active }) {
+  return (
+    <Stack
+      spacing={0}
+      sx={{
+        borderTop: `1px solid ${colors.line}`,
+        borderBottom: `1px solid ${colors.line}`,
+      }}
+    >
+      {accountLinks.map((link) => {
+        const isActive = active === link.to;
+        return (
+          <Box
+            key={link.to}
+            component={RouterLink}
+            to={link.to}
+            sx={{
+              py: 1.5,
+              borderLeft: `2px solid ${isActive ? colors.ink : "transparent"}`,
+              pl: 1.5,
+              fontFamily: fonts.body,
+              fontSize: 12,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              color: isActive ? colors.ink : colors.muted,
+              textDecoration: "none",
+              borderBottom: `1px solid ${colors.line}`,
+              "&:hover": { color: colors.ink },
+              "&:last-of-type": { borderBottom: "none" },
+            }}
+          >
+            {link.label}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
 
 const AddressList = () => {
   const navigate = useNavigate();
@@ -179,7 +94,11 @@ const AddressList = () => {
         navigate("/login");
         return;
       }
-      setError(err?.response?.data?.message || "Unable to load addresses.");
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          "Unable to load addresses."
+      );
       setAddresses([]);
     } finally {
       setLoading(false);
@@ -187,7 +106,7 @@ const AddressList = () => {
   }, [navigate]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
   const handleDelete = async (id) => {
@@ -199,116 +118,263 @@ const AddressList = () => {
       await client.delete(`/users/me/addresses/${id}`);
       await load();
     } catch (err) {
-      window.alert(err?.response?.data?.message || "Could not delete address.");
+      window.alert(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          "Could not delete address."
+      );
     } finally {
       setDeletingId("");
     }
   };
 
   return (
-    <div style={pageStyles.page}>
-      <div style={pageStyles.card}>
-        <div style={pageStyles.hero}>
-          <button
-            type="button"
-            aria-label="Back to profile"
-            onClick={() => navigate("/profile")}
-            style={pageStyles.backBtn}
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink, minHeight: "60vh" }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 1280, px: { xs: 3, sm: 5 }, py: { xs: 5, sm: 8 } }}
+      >
+        <Stack spacing={1} sx={{ mb: { xs: 4, sm: 6 } }}>
+          <Typography sx={eyebrowSx}>Account</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 34, sm: 48 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
           >
-            <FiArrowLeft size={20} aria-hidden />
-          </button>
-          <h1 style={pageStyles.heroTitle}>Saved addresses</h1>
-          <button
-            type="button"
-            onClick={() => navigate("/profile/addresses/new")}
-            style={pageStyles.addBtn}
-          >
-            <FiPlus size={18} aria-hidden />
-            Add address
-          </button>
-        </div>
+            Saved addresses
+          </Typography>
+        </Stack>
 
-        <div style={pageStyles.body}>
-          {loading && <p style={{ margin: 0 }}>Loading addresses…</p>}
-          {!loading && error && (
-            <div>
-              <p style={{ margin: "0 0 12px", fontWeight: 600 }}>{error}</p>
-              <button type="button" onClick={load} style={pageStyles.primaryBtn}>
-                Try again
-              </button>
-            </div>
-          )}
-          {!loading && !error && addresses.length === 0 && (
-            <div style={pageStyles.empty}>
-              <p style={{ margin: "0 0 16px" }}>You have not added any addresses yet.</p>
-              <button
-                type="button"
-                onClick={() => navigate("/profile/addresses/new")}
-                style={pageStyles.primaryBtn}
+        <Grid container spacing={{ xs: 4, md: 6 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <AccountSidebar active="/profile/addresses" />
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 9 }}>
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{ mb: 3 }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: fonts.body,
+                  fontSize: 13,
+                  color: colors.muted,
+                }}
               >
-                Create address
-              </button>
-            </div>
-          )}
-          {!loading &&
-            !error &&
-            addresses.map((a) => {
-              const id = getAddressId(a);
-              const lines = [
-                [a.line1, a.line2].filter(Boolean).join(", "),
-                [a.city, a.state, a.pincode].filter(Boolean).join(", "),
-                a.country,
-              ]
-                .filter(Boolean)
-                .join("\n");
-              return (
-                <div key={id || JSON.stringify(a)} style={pageStyles.addressCard}>
-                  <div style={pageStyles.rowTop}>
-                    <div style={pageStyles.labelRow}>
-                      <FiMapPin size={18} aria-hidden style={{ flexShrink: 0 }} />
-                      <p style={pageStyles.labelPill}>{a.label || "Address"}</p>
-                      {a.isDefault && <span style={pageStyles.defaultBadge}>Default</span>}
-                    </div>
-                    <div style={pageStyles.actions}>
-                      <button
-                        type="button"
-                        aria-label="Edit address"
-                        disabled={!id || deletingId === id}
-                        onClick={() => id && navigate(`/profile/addresses/${id}/edit`)}
-                        style={{
-                          ...pageStyles.iconBtn,
-                          opacity: !id || deletingId === id ? 0.5 : 1,
-                          cursor: !id || deletingId === id ? "not-allowed" : "pointer",
-                        }}
+                {addresses.length}{" "}
+                {addresses.length === 1 ? "address" : "addresses"} saved
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<FiPlus size={14} />}
+                onClick={() => navigate("/profile/addresses/new")}
+              >
+                Add new
+              </Button>
+            </Stack>
+
+            {error ? (
+              <Alert
+                severity="error"
+                sx={{
+                  mb: 3,
+                  borderRadius: 0,
+                  border: `1px solid ${colors.danger}`,
+                }}
+                action={
+                  <Button color="inherit" size="small" onClick={load}>
+                    Retry
+                  </Button>
+                }
+              >
+                {error}
+              </Alert>
+            ) : null}
+
+            {loading ? (
+              <Stack spacing={2}>
+                {[1, 2].map((k) => (
+                  <Skeleton
+                    key={k}
+                    variant="rectangular"
+                    height={140}
+                    sx={{ bgcolor: colors.stone }}
+                  />
+                ))}
+              </Stack>
+            ) : addresses.length === 0 && !error ? (
+              <Box sx={{ textAlign: "center", py: 10 }}>
+                <Typography
+                  component="h2"
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: 32,
+                    fontWeight: 500,
+                    color: colors.ink,
+                    mb: 1,
+                  }}
+                >
+                  No addresses yet.
+                </Typography>
+                <Typography
+                  sx={{
+                    color: colors.muted,
+                    fontSize: 14,
+                    mb: 3,
+                  }}
+                >
+                  Add one so you can check out faster.
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => navigate("/profile/addresses/new")}
+                >
+                  Add address
+                </Button>
+              </Box>
+            ) : (
+              <Stack spacing={2}>
+                {addresses.map((a) => {
+                  const id = getAddressId(a);
+                  return (
+                    <Box
+                      key={id || JSON.stringify(a)}
+                      sx={{
+                        bgcolor: colors.paper,
+                        border: `1px solid ${colors.line}`,
+                        p: { xs: 2.5, sm: 3 },
+                      }}
+                    >
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                        spacing={2}
                       >
-                        <FiEdit2 size={18} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="Delete address"
-                        disabled={!id || Boolean(deletingId)}
-                        onClick={() => handleDelete(id)}
-                        style={{
-                          ...pageStyles.iconBtn,
-                          opacity: !id || deletingId ? 0.5 : 1,
-                          cursor: !id || deletingId ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        <FiTrash2 size={18} aria-hidden />
-                      </button>
-                    </div>
-                  </div>
-                  <p style={pageStyles.lines}>
-                    <strong>{a.name}</strong>
-                    {a.mobile ? ` · ${a.mobile}` : ""}
-                  </p>
-                  <p style={pageStyles.lines}>{lines}</p>
-                </div>
-              );
-            })}
-        </div>
-      </div>
-    </div>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Stack
+                            direction="row"
+                            spacing={1.5}
+                            alignItems="center"
+                            sx={{ mb: 1.5 }}
+                          >
+                            <Typography
+                              sx={{
+                                fontFamily: fonts.body,
+                                fontSize: 12,
+                                letterSpacing: "0.18em",
+                                textTransform: "uppercase",
+                                fontWeight: 600,
+                                color: colors.ink,
+                              }}
+                            >
+                              {a.label || "Address"}
+                            </Typography>
+                            {a.isDefault ? (
+                              <Box
+                                sx={{
+                                  border: `1px solid ${colors.ink}`,
+                                  bgcolor: colors.ink,
+                                  color: colors.ivory,
+                                  px: 1,
+                                  py: 0.3,
+                                  fontFamily: fonts.body,
+                                  fontSize: 9,
+                                  letterSpacing: "0.22em",
+                                  textTransform: "uppercase",
+                                  fontWeight: 500,
+                                }}
+                              >
+                                Default
+                              </Box>
+                            ) : null}
+                          </Stack>
+                          <Typography
+                            sx={{
+                              fontFamily: fonts.body,
+                              fontSize: 14,
+                              color: colors.ink,
+                              fontWeight: 500,
+                              mb: 0.5,
+                            }}
+                          >
+                            {[a.name, a.mobile].filter(Boolean).join(" · ")}
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontFamily: fonts.body,
+                              fontSize: 13.5,
+                              color: colors.muted,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {[a.line1, a.line2].filter(Boolean).join(", ")}
+                            <br />
+                            {[a.city, a.state, a.pincode]
+                              .filter(Boolean)
+                              .join(", ")}
+                            {a.country ? (
+                              <>
+                                <br />
+                                {a.country}
+                              </>
+                            ) : null}
+                          </Typography>
+                        </Box>
+
+                        <Stack direction="row" spacing={0.5}>
+                          <IconButton
+                            disabled={!id || deletingId === id}
+                            onClick={() =>
+                              id && navigate(`/profile/addresses/${id}/edit`)
+                            }
+                            aria-label="Edit address"
+                            sx={{
+                              borderRadius: 0,
+                              color: colors.ink,
+                              "&:hover": {
+                                color: colors.wine,
+                                backgroundColor: "transparent",
+                              },
+                            }}
+                          >
+                            <FiEdit2 size={16} />
+                          </IconButton>
+                          <IconButton
+                            disabled={!id || Boolean(deletingId)}
+                            onClick={() => handleDelete(id)}
+                            aria-label="Delete address"
+                            sx={{
+                              borderRadius: 0,
+                              color: colors.ink,
+                              "&:hover": {
+                                color: colors.danger,
+                                backgroundColor: "transparent",
+                              },
+                            }}
+                          >
+                            <FiTrash2 size={16} />
+                          </IconButton>
+                        </Stack>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Stack>
+            )}
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
   );
 };
 

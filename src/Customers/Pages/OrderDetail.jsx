@@ -8,16 +8,14 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
-  Paper,
+  Grid,
   Skeleton,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
-import { colors } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 import {
   cancelCustomerOrder,
   fetchCustomerOrder,
@@ -25,7 +23,20 @@ import {
   pickCustomerOrderNumber,
 } from "../services/publicOrdersService";
 
-const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+const eyebrowSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.28em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
+};
 
 function formatWhen(value) {
   if (!value) return "—";
@@ -48,22 +59,46 @@ function lineQty(line) {
 }
 
 function lineUnit(line) {
-  const n = Number(line?.unitPrice ?? line?.price ?? line?.effectivePrice ?? 0);
+  const n = Number(
+    line?.unitPrice ?? line?.price ?? line?.effectivePrice ?? 0
+  );
   return Number.isFinite(n) ? n : 0;
 }
 
 function pickAddressBlock(order) {
   const ship = order?.shippingAddress ?? order?.address ?? order?.deliveryAddress;
-  if (!ship || typeof ship !== "object") return "";
-  const parts = [
-    [ship.line1, ship.line2].filter(Boolean).join(", "),
-    [ship.city, ship.state, ship.pincode ?? ship.postalCode].filter(Boolean).join(", "),
-    ship.country,
-  ].filter(Boolean);
-  return parts.join("\n");
+  if (!ship || typeof ship !== "object") return null;
+  return ship;
 }
 
 const NON_CANCEL = new Set(["cancelled", "delivered", "returned"]);
+
+function StatusBadge({ status }) {
+  const s = String(status).toLowerCase();
+  const tone = s.includes("delivered")
+    ? colors.success
+    : s.includes("cancel") || s.includes("returned")
+    ? colors.danger
+    : colors.ink;
+  return (
+    <Box
+      sx={{
+        display: "inline-block",
+        border: `1px solid ${tone}`,
+        color: tone,
+        px: 1.5,
+        py: 0.65,
+        fontFamily: fonts.body,
+        fontSize: 10.5,
+        letterSpacing: "0.22em",
+        textTransform: "uppercase",
+        fontWeight: 500,
+      }}
+    >
+      {status}
+    </Box>
+  );
+}
 
 export default function OrderDetail() {
   const { orderNumber: orderNumberParam } = useParams();
@@ -98,11 +133,20 @@ export default function OrderDetail() {
       setOrder(body);
     } catch (err) {
       if (err?.response?.status === 401) {
-        navigate("/login", { state: { from: { pathname: `/orders/${encodeURIComponent(orderNumber)}` } } });
+        navigate("/login", {
+          state: {
+            from: { pathname: `/orders/${encodeURIComponent(orderNumber)}` },
+          },
+        });
         return;
       }
       setOrder(null);
-      setError(err?.response?.data?.message || err?.message || "Could not load order.");
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Could not load order."
+      );
     } finally {
       setLoading(false);
     }
@@ -112,148 +156,377 @@ export default function OrderDetail() {
     void load();
   }, [load]);
 
-  const displayNumber = useMemo(() => (order ? pickCustomerOrderNumber(order) : orderNumber), [order, orderNumber]);
+  const displayNumber = useMemo(
+    () => (order ? pickCustomerOrderNumber(order) : orderNumber),
+    [order, orderNumber]
+  );
   const status = String(order?.status ?? order?.orderStatus ?? "—");
-  const canCancel = order && !NON_CANCEL.has(String(order?.status ?? "").toLowerCase());
+  const canCancel =
+    order && !NON_CANCEL.has(String(order?.status ?? "").toLowerCase());
 
-  const grand = Number(order?.pricing?.total ?? order?.grandTotal ?? order?.total ?? order?.totalAmount ?? 0);
+  const grand = Number(
+    order?.pricing?.total ??
+      order?.grandTotal ??
+      order?.total ??
+      order?.totalAmount ??
+      0
+  );
 
   const handleCancel = async () => {
     if (!orderNumber) return;
     setCancelBusy(true);
     setCancelErr("");
     try {
-      await cancelCustomerOrder(orderNumber, { reason: cancelReason.trim() || "Cancelled by customer" });
+      await cancelCustomerOrder(orderNumber, {
+        reason: cancelReason.trim() || "Cancelled by customer",
+      });
       setCancelOpen(false);
       await load();
     } catch (err) {
-      setCancelErr(err?.response?.data?.message || err?.message || "Could not cancel order.");
+      setCancelErr(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Could not cancel order."
+      );
     } finally {
       setCancelBusy(false);
     }
   };
 
   const lines = order ? pickLines(order) : [];
+  const ship = order ? pickAddressBlock(order) : null;
 
   return (
-    <Box sx={{ py: { xs: 2.5, md: 4 }, minHeight: "100vh", bgcolor: colors.background }}>
-      <Container maxWidth="md">
-        <Stack spacing={2}>
-          <Button component={RouterLink} to="/orders" size="small" sx={{ alignSelf: "flex-start", textTransform: "none", fontWeight: 700 }}>
-            ← All orders
-          </Button>
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink, minHeight: "60vh" }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 1100, px: { xs: 3, sm: 5 }, py: { xs: 5, sm: 8 } }}
+      >
+        <Box
+          component={RouterLink}
+          to="/orders"
+          sx={{
+            display: "inline-block",
+            mb: 3,
+            fontFamily: fonts.body,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            fontWeight: 500,
+            color: colors.muted,
+            textDecoration: "none",
+            "&:hover": { color: colors.ink },
+          }}
+        >
+          ← All orders
+        </Box>
 
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Order {displayNumber || "—"}
+        <Stack spacing={1} sx={{ mb: { xs: 4, sm: 5 } }}>
+          <Typography sx={eyebrowSx}>Order</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 30, sm: 42 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
+          >
+            {displayNumber || "—"}
           </Typography>
+        </Stack>
 
-          {error ? <Alert severity="error">{error}</Alert> : null}
+        {error ? (
+          <Alert
+            severity="error"
+            sx={{ mb: 3, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+          >
+            {error}
+          </Alert>
+        ) : null}
 
-          {loading ? (
-            <Paper variant="outlined" sx={{ p: 2 }}>
-              <Skeleton height={32} />
-              <Skeleton variant="rounded" height={120} sx={{ mt: 1 }} />
-            </Paper>
-          ) : null}
+        {loading ? (
+          <Stack spacing={3}>
+            <Skeleton variant="rectangular" height={140} sx={{ bgcolor: colors.stone }} />
+            <Skeleton variant="rectangular" height={180} sx={{ bgcolor: colors.stone }} />
+          </Stack>
+        ) : null}
 
-          {!loading && order ? (
-            <Stack spacing={2}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1}>
-                  <Stack spacing={0.5}>
-                    <Typography variant="body2" sx={{ color: alpha(colors.text, 0.7) }}>
-                      Status
-                    </Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{status}</Typography>
-                    <Typography variant="body2" sx={{ color: alpha(colors.text, 0.7), mt: 1 }}>
-                      Payment
-                    </Typography>
-                    <Typography sx={{ fontWeight: 700 }}>{String(order?.paymentMethod ?? order?.payment?.method ?? "—")}</Typography>
-                  </Stack>
-                  <Stack spacing={0.5} alignItems={{ xs: "flex-start", sm: "flex-end" }}>
-                    <Typography variant="body2" sx={{ color: alpha(colors.text, 0.7) }}>
-                      Placed
-                    </Typography>
-                    <Typography sx={{ fontWeight: 700 }}>{formatWhen(order?.createdAt ?? order?.placedAt)}</Typography>
-                    <Typography variant="body2" sx={{ color: alpha(colors.text, 0.7), mt: 1 }}>
-                      Total
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                      {Number.isFinite(grand) ? INR.format(grand) : "—"}
-                    </Typography>
-                  </Stack>
-                </Stack>
+        {!loading && order ? (
+          <Grid container spacing={{ xs: 3, md: 4 }}>
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Stack spacing={3}>
+                {/* Status / placed / total band */}
+                <Box
+                  sx={{
+                    bgcolor: colors.paper,
+                    border: `1px solid ${colors.line}`,
+                    p: { xs: 3, sm: 4 },
+                  }}
+                >
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 6, sm: 4 }}>
+                      <Typography sx={eyebrowSx}>Status</Typography>
+                      <Box sx={{ mt: 1 }}>
+                        <StatusBadge status={status} />
+                      </Box>
+                    </Grid>
+                    <Grid size={{ xs: 6, sm: 4 }}>
+                      <Typography sx={eyebrowSx}>Placed</Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: fonts.body,
+                          fontSize: 13.5,
+                          color: colors.ink,
+                          mt: 1,
+                        }}
+                      >
+                        {formatWhen(order?.createdAt ?? order?.placedAt)}
+                      </Typography>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 4 }}>
+                      <Typography sx={eyebrowSx}>Payment</Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: fonts.body,
+                          fontSize: 13.5,
+                          color: colors.ink,
+                          mt: 1,
+                          textTransform: "capitalize",
+                        }}
+                      >
+                        {String(
+                          order?.paymentMethod ?? order?.payment?.method ?? "—"
+                        )}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
 
-                {pickAddressBlock(order) ? (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>
-                      Delivery address
-                    </Typography>
-                    <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>
-                      {pickAddressBlock(order)}
-                    </Typography>
-                  </>
-                ) : null}
-
+                {/* Items */}
                 {lines.length > 0 ? (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
+                  <Box
+                    sx={{
+                      bgcolor: colors.paper,
+                      border: `1px solid ${colors.line}`,
+                      p: { xs: 3, sm: 4 },
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        ...eyebrowSx,
+                        color: colors.ink,
+                        mb: 3,
+                      }}
+                    >
                       Items
                     </Typography>
-                    <Stack spacing={1.25}>
+                    <Stack
+                      spacing={2}
+                      divider={
+                        <Box
+                          sx={{ height: 1, bgcolor: colors.line }}
+                          component="div"
+                        />
+                      }
+                    >
                       {lines.map((line, idx) => (
-                        <Stack key={line?.id ?? line?._id ?? idx} direction="row" justifyContent="space-between" gap={1}>
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {lineLabel(line)} × {lineQty(line)}
+                        <Stack
+                          key={line?.id ?? line?._id ?? idx}
+                          direction="row"
+                          justifyContent="space-between"
+                          spacing={2}
+                        >
+                          <Typography
+                            sx={{
+                              fontFamily: fonts.body,
+                              fontSize: 14,
+                              color: colors.ink,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {lineLabel(line)}{" "}
+                            <Box
+                              component="span"
+                              sx={{ color: colors.muted, fontWeight: 400 }}
+                            >
+                              × {lineQty(line)}
+                            </Box>
                           </Typography>
-                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          <Typography
+                            sx={{
+                              fontFamily: fonts.body,
+                              fontSize: 14,
+                              color: colors.ink,
+                              fontWeight: 500,
+                            }}
+                          >
                             {INR.format(lineUnit(line) * lineQty(line))}
                           </Typography>
                         </Stack>
                       ))}
                     </Stack>
-                  </>
+                  </Box>
+                ) : null}
+
+                {/* Address */}
+                {ship ? (
+                  <Box
+                    sx={{
+                      bgcolor: colors.paper,
+                      border: `1px solid ${colors.line}`,
+                      p: { xs: 3, sm: 4 },
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        ...eyebrowSx,
+                        color: colors.ink,
+                        mb: 2,
+                      }}
+                    >
+                      Delivery address
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontFamily: fonts.body,
+                        fontSize: 13.5,
+                        color: colors.ink,
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      {[ship.name, ship.mobile].filter(Boolean).join(" · ")}
+                      <br />
+                      {[ship.line1, ship.line2].filter(Boolean).join(", ")}
+                      <br />
+                      {[ship.city, ship.state, ship.pincode ?? ship.postalCode]
+                        .filter(Boolean)
+                        .join(", ")}
+                      {ship.country ? (
+                        <>
+                          <br />
+                          {ship.country}
+                        </>
+                      ) : null}
+                    </Typography>
+                  </Box>
                 ) : null}
 
                 {canCancel ? (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-                    <Button color="error" variant="outlined" onClick={() => setCancelOpen(true)} sx={{ textTransform: "none", fontWeight: 700 }}>
-                      Cancel order
-                    </Button>
-                  </>
+                  <Button
+                    variant="outlined"
+                    onClick={() => setCancelOpen(true)}
+                    sx={{
+                      alignSelf: "flex-start",
+                      color: colors.danger,
+                      borderColor: colors.danger,
+                      "&:hover": {
+                        borderColor: colors.danger,
+                        color: colors.danger,
+                        backgroundColor: "transparent",
+                      },
+                    }}
+                  >
+                    Cancel order
+                  </Button>
                 ) : null}
-              </Paper>
-            </Stack>
-          ) : null}
-        </Stack>
+              </Stack>
+            </Grid>
+
+            {/* Total card */}
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Box
+                sx={{
+                  position: { md: "sticky" },
+                  top: { md: 120 },
+                  bgcolor: colors.paper,
+                  border: `1px solid ${colors.line}`,
+                  p: { xs: 3, sm: 4 },
+                }}
+              >
+                <Typography sx={{ ...eyebrowSx, color: colors.ink, mb: 3 }}>
+                  Total
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: 32,
+                    fontWeight: 500,
+                    color: colors.ink,
+                    lineHeight: 1.05,
+                  }}
+                >
+                  {Number.isFinite(grand) ? INR.format(grand) : "—"}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.body,
+                    fontSize: 12,
+                    color: colors.muted,
+                    mt: 1,
+                  }}
+                >
+                  Includes shipping &amp; taxes if applicable.
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+        ) : null}
       </Container>
 
-      <Dialog open={cancelOpen} onClose={() => (cancelBusy ? null : setCancelOpen(false))} fullWidth maxWidth="sm">
-        <DialogTitle>Cancel order</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={cancelOpen}
+        onClose={() => (cancelBusy ? null : setCancelOpen(false))}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 0 } }}
+      >
+        <DialogTitle
+          sx={{
+            fontFamily: fonts.display,
+            fontSize: 26,
+            fontWeight: 500,
+            color: colors.ink,
+            borderBottom: `1px solid ${colors.line}`,
+          }}
+        >
+          Cancel order
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
           {cancelErr ? (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert
+              severity="error"
+              sx={{ mb: 2, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+            >
               {cancelErr}
             </Alert>
           ) : null}
+          <Typography sx={{ ...eyebrowSx, mb: 1.5 }}>Reason</Typography>
           <TextField
             autoFocus
-            margin="dense"
-            label="Reason"
             fullWidth
             value={cancelReason}
             onChange={(e) => setCancelReason(e.target.value)}
             disabled={cancelBusy}
+            size="small"
           />
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelOpen(false)} disabled={cancelBusy} sx={{ textTransform: "none" }}>
+        <DialogActions sx={{ p: 3, borderTop: `1px solid ${colors.line}` }}>
+          <Button onClick={() => setCancelOpen(false)} disabled={cancelBusy}>
             Keep order
           </Button>
-          <Button color="error" variant="contained" disabled={cancelBusy} onClick={() => void handleCancel()} sx={{ textTransform: "none", fontWeight: 700 }}>
+          <Button
+            variant="contained"
+            disabled={cancelBusy}
+            onClick={() => void handleCancel()}
+            sx={{
+              bgcolor: colors.danger,
+              "&:hover": { bgcolor: colors.danger, filter: "brightness(0.92)" },
+            }}
+          >
             {cancelBusy ? "Cancelling…" : "Confirm cancel"}
           </Button>
         </DialogActions>

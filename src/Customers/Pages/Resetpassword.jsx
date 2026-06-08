@@ -4,102 +4,24 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Container,
-  Grid,
-  Link,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import client from "../../Setup/Axios";
-import { colors, primaryAlpha } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 
-const authLayout = {
-  pageBox: {
-    flex: 1,
-    width: "100%",
-    minHeight: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    px: { xs: 2, sm: 3 },
-    py: { xs: 3, md: 5 },
-    bgcolor: colors.background,
-    background: `radial-gradient(circle at top left, ${colors.background}, ${colors.background} 55%, ${primaryAlpha(0.15)})`,
-  },
-  card: {
-    borderRadius: 4,
-    bgcolor: colors.background,
-    color: colors.text,
-    p: { xs: 1.5, sm: 2 },
-    width: "100%",
-    border: `1px solid ${primaryAlpha(0.5)}`,
-  },
-  logoMark: {
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
-    mx: "auto",
-    mb: 1.5,
-    display: "grid",
-    placeItems: "center",
-    fontSize: 22,
-    fontWeight: 700,
-    color: colors.text,
-    bgcolor: colors.primary,
-  },
-  inputSx: {
-    "& .MuiInputLabel-root": { color: colors.label },
-    "& .MuiOutlinedInput-root": {
-      color: colors.text,
-      "& fieldset": { borderColor: colors.borderSubtle },
-      "&:hover fieldset": { borderColor: colors.primary },
-      "&.Mui-focused fieldset": { borderColor: colors.primary },
-    },
-  },
-  primaryButton: {
-    mt: 0.5,
-    py: 1.5,
-    fontWeight: 700,
-    bgcolor: colors.buttonBackground,
-    color: colors.buttonText,
-    "&:hover": {
-      bgcolor: colors.buttonBackground,
-      filter: "brightness(0.92)",
-    },
-    "&.Mui-disabled": {
-      bgcolor: colors.disabledOverlay,
-      color: colors.buttonText,
-    },
-  },
-  toggleButton: {
-    height: { xs: 44, sm: 56 },
-    bgcolor: colors.buttonBackground,
-    color: colors.buttonText,
-    "&:hover": {
-      bgcolor: colors.buttonBackground,
-      filter: "brightness(0.92)",
-    },
-  },
-  errorAlert: {
-    bgcolor: colors.mutedSurface,
-    color: colors.text,
-    border: `1px solid ${colors.borderStrong}`,
-  },
-  body2: {
-    mt: 1,
-    color: colors.text,
-  },
-  footerText: {
-    textAlign: "center",
-    color: colors.text,
-  },
-  link: {
-    color: colors.text,
-    fontWeight: 600,
-  },
+const eyebrowSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.28em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
 };
 
 const Resetpassword = () => {
@@ -116,25 +38,15 @@ const Resetpassword = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email.trim()) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       newErrors.email = "Invalid email format";
-    }
-
-    if (!otp.trim()) {
-      newErrors.otp = "OTP is required";
-    } else if (!/^\d{4,8}$/.test(otp.trim())) {
-      newErrors.otp = "Enter a valid OTP (4–8 digits)";
-    }
-
-    if (!newPassword) {
-      newErrors.newPassword = "New password is required";
-    } else if (newPassword.length < 8) {
+    if (!otp.trim()) newErrors.otp = "OTP is required";
+    else if (!/^\d{4,8}$/.test(otp.trim()))
+      newErrors.otp = "Enter a valid OTP";
+    if (!newPassword) newErrors.newPassword = "New password is required";
+    else if (newPassword.length < 8)
       newErrors.newPassword = "Password must be at least 8 characters";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -142,9 +54,7 @@ const Resetpassword = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrors({});
-
     if (!validateForm()) return;
-
     setLoading(true);
     try {
       await client.post("/auth/reset-password", {
@@ -156,6 +66,7 @@ const Resetpassword = () => {
     } catch (error) {
       setErrors({
         submit:
+          error.response?.data?.error?.message ||
           error.response?.data?.message ||
           "Could not reset password. Please try again.",
       });
@@ -165,104 +76,133 @@ const Resetpassword = () => {
   };
 
   return (
-    <Box sx={authLayout.pageBox}>
-      <Container maxWidth="sm" disableGutters>
-        <Card sx={authLayout.card}>
-          <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
-            <Stack spacing={3}>
-              <Box textAlign="center">
-                <Box sx={authLayout.logoMark}>S</Box>
-                <Typography variant="h4" component="h1" fontWeight={700} fontSize={{ xs: "1.7rem", sm: "2rem" }}>
-                  Reset password
-                </Typography>
-                <Typography variant="body2" sx={authLayout.body2}>
-                  Enter the code sent to your email and choose a new password.
-                </Typography>
-              </Box>
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink, minHeight: "70vh" }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 460, px: { xs: 3, sm: 5 }, py: { xs: 6, sm: 10 } }}
+      >
+        <Stack spacing={1.5} sx={{ textAlign: "center", mb: 5 }}>
+          <Typography sx={eyebrowSx}>Reset password</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 32, sm: 42 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
+          >
+            Set a new password
+          </Typography>
+          <Typography sx={{ color: colors.muted, fontSize: 14 }}>
+            Enter the code from your email and choose a new password.
+          </Typography>
+        </Stack>
 
-              {errors.submit && (
-                <Alert icon={false} sx={authLayout.errorAlert}>
-                  {errors.submit}
-                </Alert>
-              )}
+        {errors.submit ? (
+          <Alert
+            severity="error"
+            sx={{ mb: 2, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+          >
+            {errors.submit}
+          </Alert>
+        ) : null}
 
-              <Box component="form" onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                  <TextField
-                    id="reset-email"
-                    label="Email address"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    fullWidth
-                    disabled={isEmailLocked}
-                    error={Boolean(errors.email)}
-                    helperText={errors.email}
-                    sx={authLayout.inputSx}
-                  />
+        <Box component="form" onSubmit={handleSubmit}>
+          <Stack spacing={2.5}>
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              disabled={isEmailLocked}
+              error={Boolean(errors.email)}
+              helperText={errors.email}
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="OTP"
+              inputMode="numeric"
+              value={otp}
+              onChange={(e) =>
+                setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+              }
+              autoComplete="one-time-code"
+              error={Boolean(errors.otp)}
+              helperText={errors.otp}
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="New password"
+              type={showPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              error={Boolean(errors.newPassword)}
+              helperText={errors.newPassword}
+              size="small"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword((v) => !v)}
+                      edge="end"
+                      size="small"
+                      sx={{
+                        color: colors.muted,
+                        "&:hover": { color: colors.ink },
+                      }}
+                    >
+                      {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              disabled={loading}
+              sx={{ py: 1.75 }}
+            >
+              {loading ? "Resetting…" : "Reset password"}
+            </Button>
+          </Stack>
+        </Box>
 
-                  <TextField
-                    id="reset-otp"
-                    label="OTP"
-                    type="text"
-                    inputMode="numeric"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
-                    placeholder="123456"
-                    autoComplete="one-time-code"
-                    fullWidth
-                    error={Boolean(errors.otp)}
-                    helperText={errors.otp}
-                    sx={authLayout.inputSx}
-                  />
-
-                  <Grid container spacing={1}>
-                    <Grid size={{ xs: 12, sm: 9 }}>
-                      <TextField
-                        id="reset-new-password"
-                        label="New password"
-                        type={showPassword ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="Enter a new password"
-                        autoComplete="new-password"
-                        fullWidth
-                        error={Boolean(errors.newPassword)}
-                        helperText={errors.newPassword}
-                        sx={authLayout.inputSx}
-                      />
-                    </Grid>
-                    <Grid size={{ xs: 12, sm: 3 }}>
-                      <Button
-                        type="button"
-                        variant="contained"
-                        color="primary"
-                        onClick={() => setShowPassword((prev) => !prev)}
-                        fullWidth
-                        sx={authLayout.toggleButton}
-                      >
-                        {showPassword ? "Hide" : "Show"}
-                      </Button>
-                    </Grid>
-                  </Grid>
-
-                  <Button type="submit" variant="contained" color="primary" disabled={loading} sx={authLayout.primaryButton}>
-                    {loading ? "Resetting..." : "Reset password"}
-                  </Button>
-                </Stack>
-              </Box>
-
-              <Typography variant="body2" sx={authLayout.footerText}>
-                Remember your password?{" "}
-                <Link component={RouterLink} to="/login" underline="hover" fontWeight={600} sx={authLayout.link}>
-                  Back to login
-                </Link>
-              </Typography>
-            </Stack>
-          </CardContent>
-        </Card>
+        <Box
+          sx={{
+            mt: 4,
+            pt: 4,
+            borderTop: `1px solid ${colors.line}`,
+            textAlign: "center",
+          }}
+        >
+          <Box
+            component={RouterLink}
+            to="/login"
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              color: colors.muted,
+              textDecoration: "none",
+              "&:hover": { color: colors.ink },
+            }}
+          >
+            ← Back to sign in
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

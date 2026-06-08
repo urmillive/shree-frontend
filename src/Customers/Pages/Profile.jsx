@@ -1,279 +1,94 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FiEdit2, FiLock, FiLogOut, FiMapPin, FiMenu, FiPackage, FiCheck, FiX } from "react-icons/fi";
+import {
+  Alert,
+  Box,
+  Button,
+  Container,
+  Grid,
+  IconButton,
+  Skeleton,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
+import { FiCheck, FiEdit2, FiX } from "react-icons/fi";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
-import { colors, primaryAlpha, blackAlpha, whiteAlpha } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 
-const profilePageStyles = {
-  page: {
-    flex: 1,
-    width: "100%",
-    minHeight: "100%",
-    background: colors.background,
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: "24px",
-    fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
-    color: colors.text,
-  },
-  card: {
-    width: "100%",
-    maxWidth: "920px",
-    background: colors.background,
-    border: `1px solid ${blackAlpha(0.12)}`,
-    borderRadius: "20px",
-    boxShadow: `0 20px 45px ${blackAlpha(0.08)}`,
-    overflow: "visible",
-  },
-  hero: {
-    background: colors.primary,
-    color: colors.onPrimary,
-    padding: "28px",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: "14px",
-    borderTopLeftRadius: "20px",
-    borderTopRightRadius: "20px",
-  },
-  cardBody: {
-    padding: "26px",
-    display: "grid",
-    gap: "14px",
-    borderBottomLeftRadius: "20px",
-    borderBottomRightRadius: "20px",
-  },
-  heroMuted: {
-    margin: 0,
-    opacity: 0.9,
-    fontSize: "14px",
-    color: colors.onPrimary,
-  },
-  heroTitle: {
-    margin: "4px 0 0",
-    fontSize: "30px",
-    lineHeight: 1.2,
-    color: colors.onPrimary,
-  },
-  heroNameInput: {
-    margin: "4px 0 0",
-    width: "100%",
-    maxWidth: "420px",
-    fontSize: "24px",
-    lineHeight: 1.2,
-    fontWeight: 700,
-    padding: "10px 12px",
-    borderRadius: "10px",
-    border: `1px solid ${whiteAlpha(0.45)}`,
-    outline: "none",
-    color: colors.text,
-    background: colors.background,
-    boxSizing: "border-box",
-  },
-  heroEmail: {
-    margin: "10px 0 0",
-    opacity: 0.95,
-    color: colors.onPrimary,
-  },
-  loadingCard: {
-    padding: "28px",
-    textAlign: "center",
-  },
-  rolePill: {
-    background: whiteAlpha(0.18),
-    border: `1px solid ${whiteAlpha(0.35)}`,
-    borderRadius: "999px",
-    padding: "7px 14px",
-    fontWeight: 600,
-    textTransform: "capitalize",
-    color: colors.onPrimary,
-  },
-  heroButton: {
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    border: `1px solid ${whiteAlpha(0.5)}`,
-    borderRadius: "10px",
-    padding: "9px 16px",
-    cursor: "pointer",
-    fontWeight: 700,
-    fontSize: "14px",
-  },
-  section: {
-    border: `1px solid ${primaryAlpha(0.45)}`,
-    borderRadius: "14px",
-    padding: "16px",
-    background: `linear-gradient(135deg, ${primaryAlpha(0.06)} 0%, ${colors.background} 100%)`,
-  },
-  input: {
-    padding: "10px 12px",
-    borderRadius: "10px",
-    border: `1px solid ${blackAlpha(0.15)}`,
-    fontSize: "15px",
-    outline: "none",
-    color: colors.text,
-    background: colors.background,
-  },
-  inputOtp: {
-    width: "120px",
-    padding: "10px 12px",
-    borderRadius: "10px",
-    border: `1px solid ${blackAlpha(0.15)}`,
-    fontSize: "15px",
-    letterSpacing: "0.08em",
-    outline: "none",
-    color: colors.text,
-    background: colors.background,
-  },
-  actionButton: {
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 18px",
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  subtleButton: {
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    border: `1px solid ${blackAlpha(0.15)}`,
-    borderRadius: "10px",
-    padding: "10px 14px",
-    cursor: "pointer",
-    fontWeight: 600,
-    fontSize: "13px",
-  },
-  message: {
-    margin: "12px 0 0",
-    color: colors.text,
-    fontSize: "13px",
-    fontWeight: 600,
-  },
-  infoCard: {
-    border: `1px solid ${blackAlpha(0.12)}`,
-    borderRadius: "14px",
-    padding: "14px",
-    background: colors.background,
-  },
-  infoCardTitle: {
-    margin: 0,
-    color: colors.text,
-    fontSize: "13px",
-    fontWeight: 600,
-  },
-  infoCardValue: {
-    margin: "7px 0 0",
-    color: colors.text,
-    fontWeight: 700,
-    wordBreak: "break-word",
-  },
-  menuWrap: {
-    position: "relative",
-    display: "inline-flex",
-    alignItems: "center",
-  },
-  menuTrigger: {
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "44px",
-    height: "44px",
-    padding: 0,
-    borderRadius: "12px",
-    border: `1px solid ${whiteAlpha(0.5)}`,
-    background: colors.buttonBackground,
-    color: colors.buttonText,
-    cursor: "pointer",
-    flexShrink: 0,
-  },
-  menuDropdown: {
-    position: "absolute",
-    right: 0,
-    top: "calc(100% + 8px)",
-    minWidth: "220px",
-    padding: "6px",
-    borderRadius: "12px",
-    background: colors.background,
-    border: `1px solid ${blackAlpha(0.12)}`,
-    boxShadow: `0 16px 40px ${blackAlpha(0.14)}`,
-    zIndex: 20,
-  },
-  menuItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    width: "100%",
-    padding: "10px 12px",
-    border: "none",
-    borderRadius: "8px",
-    background: "transparent",
-    color: colors.text,
-    fontSize: "14px",
-    fontWeight: 600,
-    cursor: "pointer",
-    textAlign: "left",
-    fontFamily: "inherit",
-  },
+const normalizeMobileDigits = (value) =>
+  String(value ?? "").replace(/\D/g, "").slice(0, 10);
+
+const eyebrowSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.28em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
 };
 
-/** Scoped CSS: diagonal hover fill on Save / Cancel (inline styles cannot do :hover) */
-const profileHeroEditButtonCss = `
-  .profile-hero-edit-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 9px 16px;
-    border-radius: 10px;
-    border: 1px solid ${whiteAlpha(0.5)};
-    font-weight: 700;
-    font-size: 14px;
-    font-family: inherit;
-    cursor: pointer;
-    color: ${colors.buttonText};
-    background-color: ${colors.buttonBackground};
-    overflow: hidden;
-    transition: color 0.22s ease 0.04s;
-  }
-  .profile-hero-edit-btn::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: ${colors.background};
-    transform: scale(0);
-    transform-origin: bottom left;
-    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
-  }
-  .profile-hero-edit-btn-content {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    color: inherit;
-  }
-  .profile-hero-edit-btn:hover:not(:disabled)::before {
-    transform: scale(1);
-  }
-  .profile-hero-edit-btn:hover:not(:disabled),
-  .profile-hero-edit-btn:hover:not(:disabled) .profile-hero-edit-btn-content {
-    color: #ab8a48;
-  }
-  .profile-hero-edit-btn:focus-visible {
-    outline: 2px solid ${whiteAlpha(0.85)};
-    outline-offset: 2px;
-  }
-  .profile-hero-edit-btn:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-  }
-`;
+const sectionLabelSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.22em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.ink,
+  mb: 2,
+};
 
-const normalizeMobileDigits = (value) => String(value ?? "").replace(/\D/g, "").slice(0, 10);
+const accountLinks = [
+  { label: "Profile", to: "/profile" },
+  { label: "Orders", to: "/orders" },
+  { label: "Addresses", to: "/profile/addresses" },
+  { label: "Wishlist", to: "/wishlist" },
+  { label: "Change password", to: "/profile/change-password" },
+];
+
+function AccountSidebar({ active }) {
+  return (
+    <Stack
+      spacing={0}
+      sx={{
+        borderTop: `1px solid ${colors.line}`,
+        borderBottom: `1px solid ${colors.line}`,
+      }}
+    >
+      {accountLinks.map((link) => {
+        const isActive = active === link.to;
+        return (
+          <Box
+            key={link.to}
+            component="a"
+            href={link.to}
+            sx={{
+              py: 1.5,
+              px: 0,
+              borderLeft: `2px solid ${
+                isActive ? colors.ink : "transparent"
+              }`,
+              pl: 1.5,
+              fontFamily: fonts.body,
+              fontSize: 12,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              color: isActive ? colors.ink : colors.muted,
+              textDecoration: "none",
+              borderBottom: `1px solid ${colors.line}`,
+              transition: "color 200ms cubic-bezier(0.2,0.7,0.2,1)",
+              "&:hover": { color: colors.ink },
+              "&:last-of-type": { borderBottom: "none" },
+            }}
+          >
+            {link.label}
+          </Box>
+        );
+      })}
+    </Stack>
+  );
+}
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -299,13 +114,9 @@ const Profile = () => {
   const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
 
   const [loggingOut, setLoggingOut] = useState(false);
-
   const [nameDraft, setNameDraft] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [profileEditErr, setProfileEditErr] = useState("");
-
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuContainerRef = useRef(null);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -318,8 +129,11 @@ const Profile = () => {
         navigate("/login");
         return;
       }
-
-      setError(err?.response?.data?.message || "Unable to load profile details.");
+      setError(
+        err?.response?.data?.error?.message ||
+          err?.response?.data?.message ||
+          "Unable to load profile details."
+      );
     } finally {
       setLoading(false);
     }
@@ -330,19 +144,17 @@ const Profile = () => {
       const response = await client.get("/users/me");
       setProfile(response?.data?.data?.user || null);
     } catch {
-      /* keep existing profile on silent refresh failure */
+      /* silent */
     }
   }, []);
 
   useEffect(() => {
-    loadProfile();
+    void loadProfile();
   }, [loadProfile]);
 
   useEffect(() => {
     if (isEditing) return;
-    if (profile?.mobile) {
-      setMobileDraft(normalizeMobileDigits(profile.mobile));
-    }
+    if (profile?.mobile) setMobileDraft(normalizeMobileDigits(profile.mobile));
   }, [profile?.id, profile?.mobile, isEditing]);
 
   useEffect(() => {
@@ -351,29 +163,12 @@ const Profile = () => {
     setMobileDraft(normalizeMobileDigits(profile.mobile ?? ""));
   }, [isEditing, profile?.id]);
 
-  useEffect(() => {
-    if (isEditing) setMenuOpen(false);
-  }, [isEditing]);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onPointerDown = (e) => {
-      if (menuContainerRef.current && !menuContainerRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    };
-    const onKeyDown = (e) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen]);
-
   const effectiveMobile = normalizeMobileDigits(mobileDraft);
+
+  const errMsg = (err, fallback) =>
+    err?.response?.data?.error?.message ||
+    err?.response?.data?.message ||
+    fallback;
 
   const handleSendMobileOtp = async () => {
     if (!/^\d{10}$/.test(effectiveMobile)) {
@@ -389,7 +184,7 @@ const Profile = () => {
       setOtpSent(true);
       setMobileVerifyMsg("OTP sent. Enter the code below.");
     } catch (err) {
-      setMobileVerifyErr(err?.response?.data?.message || "Unable to send OTP.");
+      setMobileVerifyErr(errMsg(err, "Unable to send OTP."));
     } finally {
       setSendingOtp(false);
     }
@@ -413,16 +208,13 @@ const Profile = () => {
         otp: mobileOtp,
       });
       const user = res?.data?.data?.user;
-      if (user) {
-        setProfile(user);
-      } else {
-        await refreshProfile();
-      }
+      if (user) setProfile(user);
+      else await refreshProfile();
       setMobileVerifyMsg("Mobile verified successfully.");
       setOtpSent(false);
       setMobileOtp("");
     } catch (err) {
-      setMobileVerifyErr(err?.response?.data?.message || "Invalid or expired OTP.");
+      setMobileVerifyErr(errMsg(err, "Invalid or expired OTP."));
     } finally {
       setVerifyingOtp(false);
     }
@@ -443,7 +235,7 @@ const Profile = () => {
       setEmailOtpSent(true);
       setEmailVerifyMsg("OTP sent to your email. Enter the code below.");
     } catch (err) {
-      setEmailVerifyErr(err?.response?.data?.message || "Unable to send email OTP.");
+      setEmailVerifyErr(errMsg(err, "Unable to send email OTP."));
     } finally {
       setSendingEmailOtp(false);
     }
@@ -463,18 +255,18 @@ const Profile = () => {
     setEmailVerifyErr("");
     setEmailVerifyMsg("");
     try {
-      const res = await client.post("/auth/verify-email", { email, otp: emailOtp });
+      const res = await client.post("/auth/verify-email", {
+        email,
+        otp: emailOtp,
+      });
       const user = res?.data?.data?.user;
-      if (user) {
-        setProfile(user);
-      } else {
-        await refreshProfile();
-      }
+      if (user) setProfile(user);
+      else await refreshProfile();
       setEmailVerifyMsg("Email verified successfully.");
       setEmailOtpSent(false);
       setEmailOtp("");
     } catch (err) {
-      setEmailVerifyErr(err?.response?.data?.message || "Invalid or expired OTP.");
+      setEmailVerifyErr(errMsg(err, "Invalid or expired OTP."));
     } finally {
       setVerifyingEmailOtp(false);
     }
@@ -516,13 +308,13 @@ const Profile = () => {
     setSavingProfile(true);
     setProfileEditErr("");
     try {
-      const res = await client.put("/users/me", { name, mobile: mobileDigits });
+      const res = await client.put("/users/me", {
+        name,
+        mobile: mobileDigits,
+      });
       const user = res?.data?.data?.user;
-      if (user) {
-        setProfile(user);
-      } else {
-        await refreshProfile();
-      }
+      if (user) setProfile(user);
+      else await refreshProfile();
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
         next.delete("edit");
@@ -533,7 +325,7 @@ const Profile = () => {
         navigate("/login");
         return;
       }
-      setProfileEditErr(err?.response?.data?.message || "Unable to update profile.");
+      setProfileEditErr(errMsg(err, "Unable to update profile."));
     } finally {
       setSavingProfile(false);
     }
@@ -554,463 +346,450 @@ const Profile = () => {
 
   if (loading) {
     return (
-      <div style={profilePageStyles.page}>
-        <div style={{ ...profilePageStyles.card, ...profilePageStyles.loadingCard }}>Loading your profile...</div>
-      </div>
+      <Box sx={{ bgcolor: colors.ivory, py: { xs: 5, sm: 8 } }}>
+        <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 5 } }}>
+          <Skeleton variant="rectangular" sx={{ bgcolor: colors.stone }} height={300} />
+        </Container>
+      </Box>
     );
   }
 
-  const userAddresses = Array.isArray(profile?.addresses) ? profile.addresses : [];
-  const hasAddresses = userAddresses.length > 0;
-
   if (error || !profile) {
     return (
-      <div style={profilePageStyles.page}>
-        <div style={{ ...profilePageStyles.card, ...profilePageStyles.loadingCard }}>
-          <h2 style={{ marginTop: 0, color: colors.text }}>Profile Unavailable</h2>
-          <p style={{ color: colors.text, marginBottom: "20px" }}>{error || "No profile data found."}</p>
-          <button
-            type="button"
-            onClick={() => navigate("/login")}
-            style={{
-              ...profilePageStyles.actionButton,
-              opacity: 1,
-              cursor: "pointer",
-            }}
+      <Box sx={{ bgcolor: colors.ivory, py: { xs: 5, sm: 8 } }}>
+        <Container maxWidth="sm" sx={{ textAlign: "center" }}>
+          <Alert
+            severity="error"
+            sx={{ borderRadius: 0, border: `1px solid ${colors.danger}` }}
           >
-            Back to Login
-          </button>
-        </div>
-      </div>
+            {error || "No profile data found."}
+          </Alert>
+          <Button
+            variant="contained"
+            sx={{ mt: 3 }}
+            onClick={() => navigate("/login")}
+          >
+            Back to login
+          </Button>
+        </Container>
+      </Box>
     );
   }
 
   return (
-    <div style={profilePageStyles.page}>
-      <style>{profileHeroEditButtonCss}</style>
-      <div style={profilePageStyles.card}>
-        <div style={profilePageStyles.hero}>
-          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-            <p style={profilePageStyles.heroMuted}>Welcome back</p>
-            {isEditing ? (
-              <input
-                type="text"
-                autoComplete="name"
-                placeholder="Your name"
-                value={nameDraft}
-                onChange={(e) => setNameDraft(e.target.value)}
-                disabled={savingProfile}
-                style={{
-                  ...profilePageStyles.heroNameInput,
-                  opacity: savingProfile ? 0.85 : 1,
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink, minHeight: "60vh" }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 1280, px: { xs: 3, sm: 5 }, py: { xs: 5, sm: 8 } }}
+      >
+        <Stack spacing={1} sx={{ mb: { xs: 4, sm: 6 } }}>
+          <Typography sx={eyebrowSx}>Account</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 34, sm: 48 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
+          >
+            Hello, {profile.name?.split(" ")[0] || "there"}
+          </Typography>
+          <Typography sx={{ color: colors.muted, fontSize: 14 }}>
+            Manage your profile, addresses, orders, and security.
+          </Typography>
+        </Stack>
+
+        <Grid container spacing={{ xs: 4, md: 6 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <AccountSidebar active="/profile" />
+            <Box
+              component="button"
+              type="button"
+              onClick={handleLogout}
+              disabled={loggingOut}
+              sx={{
+                mt: 4,
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: fonts.body,
+                fontSize: 11,
+                letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                fontWeight: 500,
+                color: colors.muted,
+                borderBottom: `1px solid ${colors.muted}`,
+                pb: 0.5,
+                "&:hover": { color: colors.wine, borderBottomColor: colors.wine },
+              }}
+            >
+              {loggingOut ? "Signing out…" : "Sign out"}
+            </Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 9 }}>
+            <Box
+              sx={{
+                bgcolor: colors.paper,
+                border: `1px solid ${colors.line}`,
+                p: { xs: 3, sm: 4 },
+              }}
+            >
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                sx={{ mb: 3 }}
+              >
+                <Typography sx={sectionLabelSx}>Personal details</Typography>
+                {!isEditing ? (
+                  <Button
+                    variant="text"
+                    startIcon={<FiEdit2 size={14} />}
+                    onClick={beginEditProfile}
+                  >
+                    Edit
+                  </Button>
+                ) : null}
+              </Stack>
+
+              {profileEditErr ? (
+                <Alert
+                  severity="error"
+                  sx={{ mb: 2, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+                >
+                  {profileEditErr}
+                </Alert>
+              ) : null}
+
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={eyebrowSx} component="div">
+                    Name
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={nameDraft}
+                      onChange={(e) => setNameDraft(e.target.value)}
+                      disabled={savingProfile}
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        mt: 1,
+                        fontFamily: fonts.body,
+                        fontSize: 14,
+                        color: colors.ink,
+                      }}
+                    >
+                      {profile.name}
+                    </Typography>
+                  )}
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={eyebrowSx} component="div">
+                    Email
+                  </Typography>
+                  <Typography
+                    sx={{
+                      mt: 1,
+                      fontFamily: fonts.body,
+                      fontSize: 14,
+                      color: colors.ink,
+                    }}
+                  >
+                    {profile.email}
+                  </Typography>
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={eyebrowSx} component="div">
+                    Mobile
+                  </Typography>
+                  {isEditing ? (
+                    <TextField
+                      fullWidth
+                      size="small"
+                      value={mobileDraft}
+                      onChange={(e) =>
+                        setMobileDraft(normalizeMobileDigits(e.target.value))
+                      }
+                      disabled={savingProfile}
+                      sx={{ mt: 1 }}
+                    />
+                  ) : (
+                    <Typography
+                      sx={{
+                        mt: 1,
+                        fontFamily: fonts.body,
+                        fontSize: 14,
+                        color: colors.ink,
+                      }}
+                    >
+                      {profile.mobile || "—"}
+                    </Typography>
+                  )}
+                </Grid>
+
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Typography sx={eyebrowSx} component="div">
+                    Member since
+                  </Typography>
+                  <Typography
+                    sx={{
+                      mt: 1,
+                      fontFamily: fonts.body,
+                      fontSize: 14,
+                      color: colors.ink,
+                    }}
+                  >
+                    {profile.createdAt
+                      ? new Date(profile.createdAt).toLocaleDateString()
+                      : "—"}
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              {isEditing ? (
+                <Stack direction="row" spacing={1.5} sx={{ mt: 3 }}>
+                  <Button
+                    variant="contained"
+                    startIcon={<FiCheck size={14} />}
+                    onClick={handleSaveProfile}
+                    disabled={savingProfile}
+                  >
+                    {savingProfile ? "Saving…" : "Save"}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<FiX size={14} />}
+                    onClick={cancelEditProfile}
+                    disabled={savingProfile}
+                  >
+                    Cancel
+                  </Button>
+                </Stack>
+              ) : null}
+
+              <Box
+                sx={{
+                  height: 1,
+                  bgcolor: colors.line,
+                  my: 4,
                 }}
               />
-            ) : (
-              <h1 style={profilePageStyles.heroTitle}>{profile.name}</h1>
-            )}
-            <p style={profilePageStyles.heroEmail}>{profile.email}</p>
-            {isEditing && profileEditErr && (
-              <p style={{ margin: "10px 0 0", fontSize: "13px", fontWeight: 600, color: colors.onPrimary }}>
-                {profileEditErr}
-              </p>
-            )}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-            {/* <span style={profilePageStyles.rolePill}>{profile.role}</span> */}
-            {isEditing ? (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-                <button
-                  type="button"
-                  className="profile-hero-edit-btn"
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile || loggingOut}
-                >
-                  <span className="profile-hero-edit-btn-content">
-                    <FiCheck size={18} strokeWidth={2.25} aria-hidden />
-                    {savingProfile ? "Saving…" : "Save"}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="profile-hero-edit-btn"
-                  onClick={cancelEditProfile}
-                  disabled={savingProfile}
-                >
-                  <span className="profile-hero-edit-btn-content">
-                    <FiX size={18} strokeWidth={2.25} aria-hidden />
-                    Cancel
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  disabled={loggingOut || savingProfile}
-                  style={{
-                    ...profilePageStyles.heroButton,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: loggingOut || savingProfile ? "not-allowed" : "pointer",
-                    opacity: loggingOut || savingProfile ? 0.65 : 1,
+
+              <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                <Box
+                  sx={{
+                    border: `1px solid ${
+                      profile.isEmailVerified ? colors.success : colors.line
+                    }`,
+                    color: profile.isEmailVerified
+                      ? colors.success
+                      : colors.muted,
+                    px: 1.5,
+                    py: 0.75,
+                    fontFamily: fonts.body,
+                    fontSize: 10.5,
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
                   }}
                 >
-                  <FiLogOut size={18} aria-hidden />
-                  {loggingOut ? "Logging out…" : "Logout"}
-                </button>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
-                <button
-                  type="button"
-                  onClick={() => navigate("/orders")}
-                  disabled={loggingOut}
-                  style={{
-                    ...profilePageStyles.heroButton,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: loggingOut ? "not-allowed" : "pointer",
-                    opacity: loggingOut ? 0.65 : 1,
+                  Email {profile.isEmailVerified ? "verified" : "unverified"}
+                </Box>
+                <Box
+                  sx={{
+                    border: `1px solid ${
+                      profile.isMobileVerified ? colors.success : colors.line
+                    }`,
+                    color: profile.isMobileVerified
+                      ? colors.success
+                      : colors.muted,
+                    px: 1.5,
+                    py: 0.75,
+                    fontFamily: fonts.body,
+                    fontSize: 10.5,
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
                   }}
                 >
-                  <FiPackage size={18} aria-hidden />
-                  Orders
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate(hasAddresses ? "/profile/addresses" : "/profile/addresses/new")}
-                  disabled={loggingOut}
-                  style={{
-                    ...profilePageStyles.heroButton,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: loggingOut ? "not-allowed" : "pointer",
-                    opacity: loggingOut ? 0.65 : 1,
+                  Mobile {profile.isMobileVerified ? "verified" : "unverified"}
+                </Box>
+              </Stack>
+
+              {!profile.isEmailVerified && !isEditing ? (
+                <Box
+                  sx={{
+                    borderTop: `1px solid ${colors.line}`,
+                    pt: 3,
+                    mb: 4,
                   }}
                 >
-                  <FiMapPin size={18} aria-hidden />
-                  Address
-                </button>
-                <div ref={menuContainerRef} style={profilePageStyles.menuWrap}>
-                  <button
-                    type="button"
-                    aria-haspopup="true"
-                    aria-expanded={menuOpen}
-                    aria-label={menuOpen ? "Close menu" : "Open menu"}
-                    onClick={() => setMenuOpen((open) => !open)}
-                    disabled={loggingOut}
-                    style={{
-                      ...profilePageStyles.menuTrigger,
-                      cursor: loggingOut ? "not-allowed" : "pointer",
-                      opacity: loggingOut ? 0.75 : 1,
+                  <Typography sx={sectionLabelSx}>Verify email</Typography>
+                  <Typography
+                    sx={{
+                      color: colors.muted,
+                      fontSize: 13,
+                      mb: 2,
                     }}
                   >
-                    <FiMenu size={22} strokeWidth={2.25} aria-hidden />
-                  </button>
-                {menuOpen && (
-                  <div role="menu" aria-label="Profile actions" style={profilePageStyles.menuDropdown}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        beginEditProfile();
-                      }}
-                      disabled={loggingOut}
-                      style={{
-                        ...profilePageStyles.menuItem,
-                        cursor: loggingOut ? "not-allowed" : "pointer",
-                        opacity: loggingOut ? 0.65 : 1,
-                      }}
-                    >
-                      <FiEdit2 size={18} aria-hidden />
-                      Edit
-                    </button>
-                   
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        navigate("/orders");
-                      }}
-                      disabled={loggingOut}
-                      style={{
-                        ...profilePageStyles.menuItem,
-                        cursor: loggingOut ? "not-allowed" : "pointer",
-                        opacity: loggingOut ? 0.65 : 1,
-                      }}
-                    >
-                      <FiPackage size={18} aria-hidden />
-                      My orders
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        navigate("/profile/change-password");
-                      }}
-                      disabled={loggingOut}
-                      style={{
-                        ...profilePageStyles.menuItem,
-                        cursor: loggingOut ? "not-allowed" : "pointer",
-                        opacity: loggingOut ? 0.65 : 1,
-                      }}
-                    >
-                      <FiLock size={18} aria-hidden />
-                      Change password
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        handleLogout();
-                      }}
-                      disabled={loggingOut}
-                      style={{
-                        ...profilePageStyles.menuItem,
-                        cursor: loggingOut ? "not-allowed" : "pointer",
-                        opacity: loggingOut ? 0.65 : 1,
-                      }}
-                    >
-                      <FiLogOut size={18} aria-hidden />
-                      {loggingOut ? "Logging out…" : "Logout"}
-                    </button>
-                  </div>
-                )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div style={profilePageStyles.cardBody}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
-            {isEditing ? (
-              <div style={profilePageStyles.infoCard}>
-                <p style={profilePageStyles.infoCardTitle}>Mobile</p>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="10-digit mobile"
-                  value={mobileDraft}
-                  onChange={(e) => setMobileDraft(normalizeMobileDigits(e.target.value))}
-                  disabled={savingProfile}
-                  style={{
-                    ...profilePageStyles.input,
-                    marginTop: "7px",
-                    width: "100%",
-                    maxWidth: "280px",
-                    boxSizing: "border-box",
-                    opacity: savingProfile ? 0.85 : 1,
-                  }}
-                />
-              </div>
-            ) : (
-              <InfoCard title="Mobile" value={profile.mobile || "Not added"} />
-            )}
-            {/* <InfoCard title="User ID" value={profile.id} /> */}
-            <InfoCard
-              title="Last Login"
-              value={profile.lastLoginAt ? new Date(profile.lastLoginAt).toLocaleString() : "N/A"}
-            />
-            <InfoCard
-              title="Member Since"
-              value={profile.createdAt ? new Date(profile.createdAt).toLocaleDateString() : "N/A"}
-            />
-          </div>
-
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginTop: "8px" }}>
-            <StatusBadge label="Email Verified" ok={profile.isEmailVerified} />
-            <StatusBadge label="Mobile Verified" ok={profile.isMobileVerified} />
-            {/* <StatusBadge label="Account Active" ok={profile.isActive} /> */}
-          </div>
-
-          {!profile.isEmailVerified && !isEditing && (
-            <div style={profilePageStyles.section}>
-              <p style={{ margin: "0 0 6px", color: colors.text, fontWeight: 700, fontSize: "15px" }}>
-                Verify your email
-              </p>
-              <p style={{ margin: "0 0 14px", color: colors.text, fontSize: "13px", lineHeight: 1.45 }}>
-                We will send a 6-digit code to <strong style={{ color: colors.text }}>{profile.email}</strong>.
-                Enter it below to verify.
-              </p>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-                {!emailOtpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleSendEmailOtp}
-                    disabled={sendingEmailOtp || verifyingEmailOtp}
-                    style={{
-                      ...profilePageStyles.actionButton,
-                      cursor: sendingEmailOtp || verifyingEmailOtp ? "not-allowed" : "pointer",
-                      opacity: sendingEmailOtp || verifyingEmailOtp ? 0.65 : 1,
-                    }}
-                  >
-                    {sendingEmailOtp ? "Sending…" : "Verify email"}
-                  </button>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="6-digit OTP"
-                      value={emailOtp}
-                      onChange={(e) =>
-                        setEmailOtp(String(e.target.value).replace(/\D/g, "").slice(0, 6))
-                      }
-                      disabled={verifyingEmailOtp}
-                      style={profilePageStyles.inputOtp}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyEmailOtp}
-                      disabled={verifyingEmailOtp || emailOtp.length !== 6}
-                      style={{
-                        ...profilePageStyles.actionButton,
-                        cursor: verifyingEmailOtp || emailOtp.length !== 6 ? "not-allowed" : "pointer",
-                        opacity: verifyingEmailOtp || emailOtp.length !== 6 ? 0.65 : 1,
-                      }}
-                    >
-                      {verifyingEmailOtp ? "Verifying…" : "Verify email"}
-                    </button>
-                    <button
-                      type="button"
+                    We'll send a 6-digit code to{" "}
+                    <strong style={{ color: colors.ink }}>
+                      {profile.email}
+                    </strong>
+                    .
+                  </Typography>
+                  {!emailOtpSent ? (
+                    <Button
+                      variant="outlined"
                       onClick={handleSendEmailOtp}
-                      disabled={sendingEmailOtp || verifyingEmailOtp}
-                      style={{
-                        ...profilePageStyles.subtleButton,
-                        cursor: sendingEmailOtp || verifyingEmailOtp ? "not-allowed" : "pointer",
-                        opacity: sendingEmailOtp || verifyingEmailOtp ? 0.65 : 1,
-                      }}
+                      disabled={sendingEmailOtp}
                     >
-                      {sendingEmailOtp ? "Sending…" : "Resend OTP"}
-                    </button>
-                  </>
-                )}
-              </div>
+                      {sendingEmailOtp ? "Sending…" : "Send code"}
+                    </Button>
+                  ) : (
+                    <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                      <TextField
+                        size="small"
+                        placeholder="6-digit OTP"
+                        value={emailOtp}
+                        onChange={(e) =>
+                          setEmailOtp(
+                            String(e.target.value)
+                              .replace(/\D/g, "")
+                              .slice(0, 6)
+                          )
+                        }
+                        disabled={verifyingEmailOtp}
+                        sx={{ width: 160 }}
+                      />
+                      <Button
+                        variant="contained"
+                        onClick={handleVerifyEmailOtp}
+                        disabled={verifyingEmailOtp || emailOtp.length !== 6}
+                      >
+                        {verifyingEmailOtp ? "Verifying…" : "Verify"}
+                      </Button>
+                      <Button
+                        variant="text"
+                        onClick={handleSendEmailOtp}
+                        disabled={sendingEmailOtp}
+                      >
+                        Resend
+                      </Button>
+                    </Stack>
+                  )}
+                  {emailVerifyErr ? (
+                    <Typography
+                      sx={{ mt: 1.5, fontSize: 12, color: colors.danger }}
+                    >
+                      {emailVerifyErr}
+                    </Typography>
+                  ) : null}
+                  {emailVerifyMsg && !emailVerifyErr ? (
+                    <Typography
+                      sx={{ mt: 1.5, fontSize: 12, color: colors.success }}
+                    >
+                      {emailVerifyMsg}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ) : null}
 
-              {emailVerifyErr && <p style={profilePageStyles.message}>{emailVerifyErr}</p>}
-              {emailVerifyMsg && !emailVerifyErr && <p style={profilePageStyles.message}>{emailVerifyMsg}</p>}
-            </div>
-          )}
-
-          {!profile.isMobileVerified && !isEditing && (
-            <div style={profilePageStyles.section}>
-              <p style={{ margin: "0 0 6px", color: colors.text, fontWeight: 700, fontSize: "15px" }}>
-                Verify your mobile number
-              </p>
-              <p style={{ margin: "0 0 14px", color: colors.text, fontSize: "13px", lineHeight: 1.45 }}>
-                Your mobile is not verified yet. Enter your 10-digit number, send OTP, then enter the code you receive.
-              </p>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", alignItems: "center" }}>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="10-digit mobile"
-                  value={mobileDraft}
-                  onChange={(e) => setMobileDraft(normalizeMobileDigits(e.target.value))}
-                  disabled={sendingOtp || verifyingOtp}
-                  style={{
-                    ...profilePageStyles.input,
-                    minWidth: "160px",
-                    flex: "1 1 160px",
-                  }}
-                />
-                {!otpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleSendMobileOtp}
-                    disabled={sendingOtp || verifyingOtp || effectiveMobile.length !== 10}
-                    style={{
-                      ...profilePageStyles.actionButton,
-                      cursor: sendingOtp || effectiveMobile.length !== 10 ? "not-allowed" : "pointer",
-                      opacity: sendingOtp || effectiveMobile.length !== 10 ? 0.65 : 1,
-                    }}
+              {!profile.isMobileVerified && !isEditing ? (
+                <Box sx={{ borderTop: `1px solid ${colors.line}`, pt: 3 }}>
+                  <Typography sx={sectionLabelSx}>Verify mobile</Typography>
+                  <Typography
+                    sx={{ color: colors.muted, fontSize: 13, mb: 2 }}
                   >
-                    {sendingOtp ? "Sending…" : "Send OTP"}
-                  </button>
-                ) : (
-                  <>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="6-digit OTP"
-                      value={mobileOtp}
+                    Enter your 10-digit number, send OTP, then enter the code.
+                  </Typography>
+                  <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                    <TextField
+                      size="small"
+                      placeholder="10-digit mobile"
+                      value={mobileDraft}
                       onChange={(e) =>
-                        setMobileOtp(String(e.target.value).replace(/\D/g, "").slice(0, 6))
+                        setMobileDraft(normalizeMobileDigits(e.target.value))
                       }
-                      disabled={verifyingOtp}
-                      style={profilePageStyles.inputOtp}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleVerifyMobileOtp}
-                      disabled={verifyingOtp || mobileOtp.length !== 6}
-                      style={{
-                        ...profilePageStyles.actionButton,
-                        cursor: verifyingOtp || mobileOtp.length !== 6 ? "not-allowed" : "pointer",
-                        opacity: verifyingOtp || mobileOtp.length !== 6 ? 0.65 : 1,
-                      }}
-                    >
-                      {verifyingOtp ? "Verifying…" : "Verify mobile"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleSendMobileOtp}
                       disabled={sendingOtp || verifyingOtp}
-                      style={{
-                        ...profilePageStyles.subtleButton,
-                        cursor: sendingOtp || verifyingOtp ? "not-allowed" : "pointer",
-                        opacity: sendingOtp || verifyingOtp ? 0.65 : 1,
-                      }}
+                      sx={{ width: 200 }}
+                    />
+                    {!otpSent ? (
+                      <Button
+                        variant="outlined"
+                        onClick={handleSendMobileOtp}
+                        disabled={
+                          sendingOtp || effectiveMobile.length !== 10
+                        }
+                      >
+                        {sendingOtp ? "Sending…" : "Send OTP"}
+                      </Button>
+                    ) : (
+                      <>
+                        <TextField
+                          size="small"
+                          placeholder="6-digit OTP"
+                          value={mobileOtp}
+                          onChange={(e) =>
+                            setMobileOtp(
+                              String(e.target.value)
+                                .replace(/\D/g, "")
+                                .slice(0, 6)
+                            )
+                          }
+                          disabled={verifyingOtp}
+                          sx={{ width: 160 }}
+                        />
+                        <Button
+                          variant="contained"
+                          onClick={handleVerifyMobileOtp}
+                          disabled={verifyingOtp || mobileOtp.length !== 6}
+                        >
+                          {verifyingOtp ? "Verifying…" : "Verify"}
+                        </Button>
+                        <Button
+                          variant="text"
+                          onClick={handleSendMobileOtp}
+                          disabled={sendingOtp}
+                        >
+                          Resend
+                        </Button>
+                      </>
+                    )}
+                  </Stack>
+                  {mobileVerifyErr ? (
+                    <Typography
+                      sx={{ mt: 1.5, fontSize: 12, color: colors.danger }}
                     >
-                      {sendingOtp ? "Sending…" : "Resend OTP"}
-                    </button>
-                  </>
-                )}
-              </div>
-
-              {mobileVerifyErr && <p style={profilePageStyles.message}>{mobileVerifyErr}</p>}
-              {mobileVerifyMsg && !mobileVerifyErr && <p style={profilePageStyles.message}>{mobileVerifyMsg}</p>}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                      {mobileVerifyErr}
+                    </Typography>
+                  ) : null}
+                  {mobileVerifyMsg && !mobileVerifyErr ? (
+                    <Typography
+                      sx={{ mt: 1.5, fontSize: 12, color: colors.success }}
+                    >
+                      {mobileVerifyMsg}
+                    </Typography>
+                  ) : null}
+                </Box>
+              ) : null}
+            </Box>
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
   );
 };
-
-const InfoCard = ({ title, value }) => (
-  <div style={profilePageStyles.infoCard}>
-    <p style={profilePageStyles.infoCardTitle}>{title}</p>
-    <p style={profilePageStyles.infoCardValue}>{value}</p>
-  </div>
-);
-
-const StatusBadge = ({ label, ok }) => (
-  <span
-    style={{
-      borderRadius: "999px",
-      padding: "8px 12px",
-      fontWeight: 600,
-      fontSize: "13px",
-      border: ok ? `1px solid ${primaryAlpha(0.55)}` : `1px solid ${blackAlpha(0.22)}`,
-      color: colors.text,
-      background: ok ? primaryAlpha(0.08) : blackAlpha(0.04),
-    }}
-  >
-    {label}: {ok ? "Yes" : "No"}
-  </span>
-);
 
 export default Profile;

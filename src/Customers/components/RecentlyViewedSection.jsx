@@ -1,6 +1,5 @@
 import { Box, Button, Grid, Skeleton, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { colors } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 import ProductCard from "./ProductCard";
 import { useRecentlyViewed } from "../context/RecentlyViewedContext";
 
@@ -15,7 +14,9 @@ export default function RecentlyViewedSection({
   const { products, loading, busy, clearAllRecentlyViewed } = useRecentlyViewed();
 
   const visible = excludeProductId
-    ? products.filter((p) => !sameId(p?.id ?? p?._id ?? p?.productId, excludeProductId))
+    ? products.filter(
+        (p) => !sameId(p?.id ?? p?._id ?? p?.productId, excludeProductId)
+      )
     : products;
 
   if (!loading && visible.length === 0) {
@@ -31,18 +32,54 @@ export default function RecentlyViewedSection({
   };
 
   return (
-    <Box sx={{ mt: dense ? 0 : { xs: 3, sm: 4 } }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 2 }}>
-        <Typography variant="h5" component="h2" sx={{ fontWeight: 800, letterSpacing: -0.3 }}>
-          {title}
-        </Typography>
+    <Box sx={{ mt: dense ? 0 : { xs: 5, sm: 9 } }}>
+      <Stack
+        direction="row"
+        alignItems="flex-end"
+        justifyContent="space-between"
+        sx={{ mb: { xs: 3, sm: 4 } }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.28em",
+              textTransform: "uppercase",
+              color: colors.muted,
+              fontWeight: 500,
+              mb: 1,
+            }}
+          >
+            For you
+          </Typography>
+          <Typography
+            component="h2"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 26, sm: 36 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.1,
+            }}
+          >
+            {title}
+          </Typography>
+        </Box>
         {showClear && visible.length > 0 ? (
           <Button
-            size="small"
             variant="text"
             disabled={busy}
             onClick={() => void handleClear()}
-            sx={{ textTransform: "none", fontWeight: 700, color: alpha(colors.text, 0.65) }}
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: colors.muted,
+              "&:hover": { color: colors.wine, backgroundColor: "transparent" },
+            }}
           >
             Clear
           </Button>
@@ -50,17 +87,31 @@ export default function RecentlyViewedSection({
       </Stack>
 
       {loading ? (
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {[1, 2, 3, 4].map((key) => (
             <Grid key={key} size={{ xs: 6, sm: 6, md: 3 }}>
-              <Skeleton variant="rounded" height={dense ? 260 : 300} sx={{ borderRadius: 2.5 }} />
+              <Skeleton
+                variant="rectangular"
+                sx={{
+                  aspectRatio: "3 / 4",
+                  borderRadius: 0,
+                  bgcolor: colors.stone,
+                }}
+              />
+              <Skeleton sx={{ mt: 1.5, bgcolor: colors.stone }} width="60%" />
+              <Skeleton sx={{ bgcolor: colors.stone }} width="30%" />
             </Grid>
           ))}
         </Grid>
       ) : (
-        <Grid container spacing={2}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {visible.map((product, index) => {
-            const key = product?.id || product?._id || product?.productId || product?.slug || `rv-${index}`;
+            const key =
+              product?.id ||
+              product?._id ||
+              product?.productId ||
+              product?.slug ||
+              `rv-${index}`;
             return (
               <Grid key={String(key)} size={{ xs: 6, sm: 6, md: 3 }}>
                 <ProductCard product={product} />

@@ -2,11 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
-  Button,
   Container,
   FormControl,
   Grid,
-  InputLabel,
   MenuItem,
   Pagination,
   Select,
@@ -15,11 +13,16 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import ProductCard from "../components/ProductCard";
-import { colors } from "../../theme/theme";
-import { fetchPublicCategoryTree, flattenPublicCategoryTree } from "../services/publicCategoriesService";
-import { fetchPublicProducts, normalizeProductsPayload } from "../services/publicProductsService";
+import { colors, fonts } from "../../theme/theme";
+import {
+  fetchPublicCategoryTree,
+  flattenPublicCategoryTree,
+} from "../services/publicCategoriesService";
+import {
+  fetchPublicProducts,
+  normalizeProductsPayload,
+} from "../services/publicProductsService";
 
 const LIMIT = 12;
 
@@ -27,7 +30,7 @@ const sortOptions = [
   { value: "", label: "Newest" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
-  { value: "popular", label: "Popularity" },
+  { value: "popular", label: "Most Loved" },
 ];
 
 const flagOptions = [
@@ -37,10 +40,49 @@ const flagOptions = [
 
 const sizeOptions = ["XS", "S", "M", "L", "XL", "XXL"];
 
+const sectionLabelSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.22em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.ink,
+  mb: 1.5,
+  display: "block",
+};
+
+const filterChipSx = (active) => ({
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  cursor: "pointer",
+  border: `1px solid ${active ? colors.ink : colors.line}`,
+  bgcolor: active ? colors.ink : "transparent",
+  color: active ? colors.ivory : colors.ink,
+  px: 1.5,
+  py: 0.85,
+  transition: "all 200ms cubic-bezier(0.2,0.7,0.2,1)",
+  "&:hover": {
+    borderColor: colors.ink,
+    bgcolor: active ? colors.ink : colors.mutedSurface,
+  },
+});
+
 const renderSkeletonCards = () =>
   Array.from({ length: 8 }).map((_, idx) => (
-    <Grid key={idx} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-      <Skeleton variant="rounded" height={360} />
+    <Grid key={idx} size={{ xs: 6, sm: 6, md: 4, lg: 3 }}>
+      <Skeleton
+        variant="rectangular"
+        sx={{
+          aspectRatio: "3 / 4",
+          borderRadius: 0,
+          bgcolor: colors.stone,
+        }}
+      />
+      <Skeleton sx={{ mt: 1.5, bgcolor: colors.stone }} width="60%" />
+      <Skeleton sx={{ bgcolor: colors.stone }} width="30%" />
     </Grid>
   ));
 
@@ -67,7 +109,9 @@ export default function Products() {
     fetchPublicCategoryTree()
       .then((res) => {
         if (cancelled) return;
-        const flattened = flattenPublicCategoryTree(res?.data?.data || res?.data || []);
+        const flattened = flattenPublicCategoryTree(
+          res?.data?.data || res?.data || []
+        );
         const slugs = flattened
           .map((item) => item?.node?.slug)
           .filter((slug) => slug != null && String(slug).trim() !== "");
@@ -113,7 +157,12 @@ export default function Products() {
         setTotalProducts(normalized.total || normalized.products.length);
       } catch (err) {
         if (cancelled) return;
-        setError(err?.response?.data?.message || err?.message || "Unable to load products.");
+        setError(
+          err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "Unable to load products."
+        );
         setProducts([]);
         setTotalProducts(0);
         setTotalPages(1);
@@ -137,8 +186,9 @@ export default function Products() {
   const toggleFlag = (flagValue) => {
     setFlags((prev) => {
       const hasFlag = prev.includes(flagValue);
-      const next = hasFlag ? prev.filter((item) => item !== flagValue) : [...prev, flagValue];
-      return next;
+      return hasFlag
+        ? prev.filter((item) => item !== flagValue)
+        : [...prev, flagValue];
     });
     setPage(1);
   };
@@ -154,83 +204,213 @@ export default function Products() {
     setPage(1);
   };
 
-  return (
-    <Box sx={{ py: { xs: 2.5, md: 4 }, minHeight: "100vh", bgcolor: colors.background }}>
-      <Container maxWidth="xl">
-        <Stack spacing={2.5}>
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 800, letterSpacing: -0.4 }}>
-              All Products
-            </Typography>
-            <Typography variant="body2" sx={{ color: alpha(colors.text, 0.65), mt: 0.5 }}>
-              Explore trending and featured products with smart filters.
-            </Typography>
-          </Box>
+  const sidebar = (
+    <Stack spacing={4.5} sx={{ pr: { md: 4 } }}>
+      <Box>
+        <Typography sx={sectionLabelSx}>Category</Typography>
+        <FormControl fullWidth size="small">
+          <Select
+            value={category}
+            displayEmpty
+            onChange={(e) => updateFilter(setCategory, e.target.value)}
+          >
+            <MenuItem value="">All categories</MenuItem>
+            {categories.map((slug) => (
+              <MenuItem key={slug} value={slug}>
+                {slug}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-          <Box sx={{ p: 2, borderRadius: 2, border: `1px solid ${alpha(colors.text, 0.12)}` }}>
-            <Grid container spacing={1.4}>
-              <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Category</InputLabel>
-                  <Select value={category} label="Category" onChange={(e) => updateFilter(setCategory, e.target.value)}>
-                    <MenuItem value="">All</MenuItem>
-                    {categories.map((slug) => (
-                      <MenuItem key={slug} value={slug}>
-                        {slug}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Fabric"
-                  value={fabric}
-                  onChange={(e) => updateFilter(setFabric, e.target.value)}
-                  placeholder="Cotton"
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Size</InputLabel>
-                  <Select value={size} label="Size" onChange={(e) => updateFilter(setSize, e.target.value)}>
-                    <MenuItem value="">All</MenuItem>
-                    {sizeOptions.map((sizeValue) => (
-                      <MenuItem key={sizeValue} value={sizeValue}>
-                        {sizeValue}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  label="Min"
-                  value={minPrice}
-                  onChange={(e) => updateFilter(setMinPrice, e.target.value)}
-                  inputProps={{ min: 0 }}
-                />
-              </Grid>
-              <Grid size={{ xs: 6, sm: 3, md: 1.5 }}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  type="number"
-                  label="Max"
-                  value={maxPrice}
-                  onChange={(e) => updateFilter(setMaxPrice, e.target.value)}
-                  inputProps={{ min: 0 }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
-                <FormControl fullWidth size="small">
-                  <InputLabel>Sort</InputLabel>
-                  <Select value={sort} label="Sort" onChange={(e) => updateFilter(setSort, e.target.value)}>
+      <Box>
+        <Typography sx={sectionLabelSx}>Fabric</Typography>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="e.g. Cotton, Silk"
+          value={fabric}
+          onChange={(e) => updateFilter(setFabric, e.target.value)}
+        />
+      </Box>
+
+      <Box>
+        <Typography sx={sectionLabelSx}>Size</Typography>
+        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+          <Box
+            onClick={() => updateFilter(setSize, "")}
+            sx={filterChipSx(size === "")}
+          >
+            All
+          </Box>
+          {sizeOptions.map((s) => (
+            <Box
+              key={s}
+              onClick={() => updateFilter(setSize, s)}
+              sx={filterChipSx(size === s)}
+            >
+              {s}
+            </Box>
+          ))}
+        </Stack>
+      </Box>
+
+      <Box>
+        <Typography sx={sectionLabelSx}>Price ₹</Typography>
+        <Stack direction="row" spacing={1.5}>
+          <TextField
+            size="small"
+            type="number"
+            placeholder="Min"
+            value={minPrice}
+            onChange={(e) => updateFilter(setMinPrice, e.target.value)}
+            inputProps={{ min: 0 }}
+            sx={{ flex: 1 }}
+          />
+          <TextField
+            size="small"
+            type="number"
+            placeholder="Max"
+            value={maxPrice}
+            onChange={(e) => updateFilter(setMaxPrice, e.target.value)}
+            inputProps={{ min: 0 }}
+            sx={{ flex: 1 }}
+          />
+        </Stack>
+      </Box>
+
+      <Box>
+        <Typography sx={sectionLabelSx}>Highlights</Typography>
+        <Stack direction="row" flexWrap="wrap" useFlexGap spacing={1}>
+          {flagOptions.map((flag) => (
+            <Box
+              key={flag.value}
+              onClick={() => toggleFlag(flag.value)}
+              sx={filterChipSx(flags.includes(flag.value))}
+            >
+              {flag.label}
+            </Box>
+          ))}
+        </Stack>
+      </Box>
+
+      <Box
+        component="button"
+        type="button"
+        onClick={clearAll}
+        sx={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          textAlign: "left",
+          cursor: "pointer",
+          fontFamily: fonts.body,
+          fontSize: 11,
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          fontWeight: 500,
+          color: colors.muted,
+          borderBottom: `1px solid ${colors.muted}`,
+          alignSelf: "flex-start",
+          pb: 0.5,
+          width: "fit-content",
+          transition: "color 200ms",
+          "&:hover": {
+            color: colors.wine,
+            borderBottomColor: colors.wine,
+          },
+        }}
+      >
+        Reset filters
+      </Box>
+    </Stack>
+  );
+
+  return (
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 1440, px: { xs: 3, sm: 5 }, py: { xs: 5, sm: 8 } }}
+      >
+        {/* Editorial header */}
+        <Stack
+          spacing={1.5}
+          sx={{ mb: { xs: 5, sm: 7 }, textAlign: "center" }}
+        >
+          <Typography sx={sectionLabelSx}>The Shop</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 36, sm: 56 },
+              fontWeight: 500,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+              color: colors.ink,
+            }}
+          >
+            All pieces
+          </Typography>
+          <Typography
+            sx={{
+              color: colors.muted,
+              fontSize: 13.5,
+              maxWidth: 480,
+              mx: "auto",
+              lineHeight: 1.6,
+            }}
+          >
+            Browse the full collection. Filter by fabric, size, and price.
+          </Typography>
+        </Stack>
+
+        <Grid container spacing={{ xs: 0, md: 4 }}>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <Box
+              sx={{
+                position: { md: "sticky" },
+                top: { md: 120 },
+                mb: { xs: 4, md: 0 },
+                pb: { xs: 4, md: 0 },
+                borderBottom: {
+                  xs: `1px solid ${colors.line}`,
+                  md: "none",
+                },
+              }}
+            >
+              {sidebar}
+            </Box>
+          </Grid>
+
+          <Grid size={{ xs: 12, md: 9 }}>
+            {/* Sort + count bar */}
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              justifyContent="space-between"
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              sx={{ mb: 3.5 }}
+            >
+              <Typography
+                sx={{
+                  fontFamily: fonts.body,
+                  fontSize: 12,
+                  letterSpacing: "0.06em",
+                  color: colors.muted,
+                }}
+              >
+                {loading
+                  ? "Loading…"
+                  : `${totalProducts} ${totalProducts === 1 ? "piece" : "pieces"}`}
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Typography sx={{ ...sectionLabelSx, mb: 0 }}>Sort</Typography>
+                <FormControl size="small" sx={{ minWidth: 180 }}>
+                  <Select
+                    value={sort}
+                    onChange={(e) => updateFilter(setSort, e.target.value)}
+                  >
                     {sortOptions.map((opt) => (
                       <MenuItem key={opt.value || "default"} value={opt.value}>
                         {opt.label}
@@ -238,69 +418,80 @@ export default function Products() {
                     ))}
                   </Select>
                 </FormControl>
-              </Grid>
+              </Box>
+            </Stack>
+
+            {error ? (
+              <Alert
+                severity="error"
+                sx={{ mb: 3, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+              >
+                {error}
+              </Alert>
+            ) : null}
+
+            <Grid container spacing={{ xs: 2, sm: 3 }}>
+              {loading
+                ? renderSkeletonCards()
+                : products.map((product) => (
+                    <Grid
+                      key={
+                        product?._id ||
+                        product?.id ||
+                        product?.slug ||
+                        product?.name
+                      }
+                      size={{ xs: 6, sm: 6, md: 4, lg: 3 }}
+                    >
+                      <ProductCard product={product} />
+                    </Grid>
+                  ))}
             </Grid>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1.5 }}>
-              {flagOptions.map((flag) => {
-                const active = flags.includes(flag.value);
-                return (
-                  <Button
-                    key={flag.value}
-                    size="small"
-                    variant={active ? "contained" : "outlined"}
-                    onClick={() => toggleFlag(flag.value)}
-                    sx={{
-                      textTransform: "none",
-                      ...(active
-                        ? { bgcolor: colors.buttonBackground, color: colors.buttonText, "&:hover": { bgcolor: colors.buttonBackground } }
-                        : {}),
-                    }}
-                  >
-                    {flag.label}
-                  </Button>
-                );
-              })}
-              <Button size="small" onClick={clearAll} sx={{ textTransform: "none" }}>
-                Clear all
-              </Button>
-            </Stack>
-          </Box>
+            {!loading && products.length === 0 && !error ? (
+              <Box sx={{ textAlign: "center", py: 8 }}>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: 24,
+                    color: colors.ink,
+                    mb: 1,
+                  }}
+                >
+                  Nothing here yet
+                </Typography>
+                <Typography sx={{ color: colors.muted, fontSize: 14 }}>
+                  No pieces matched your filters. Try resetting.
+                </Typography>
+              </Box>
+            ) : null}
 
-          {error ? <Alert severity="error">{error}</Alert> : null}
-
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }}>
-            <Typography variant="body2" sx={{ color: alpha(colors.text, 0.66) }}>
-              {loading ? "Loading products..." : `${totalProducts} products found`}
-            </Typography>
-          </Stack>
-
-          <Grid container spacing={2}>
-            {loading
-              ? renderSkeletonCards()
-              : products.map((product) => (
-                  <Grid key={product?._id || product?.id || product?.slug || product?.name} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                    <ProductCard product={product} />
-                  </Grid>
-                ))}
+            {totalPages > 1 ? (
+              <Stack alignItems="center" sx={{ pt: 6 }}>
+                <Pagination
+                  page={page}
+                  count={Math.max(totalPages, 1)}
+                  onChange={(_, nextPage) => setPage(nextPage)}
+                  shape="rounded"
+                  sx={{
+                    "& .MuiPaginationItem-root": {
+                      fontFamily: fonts.body,
+                      fontSize: 12,
+                      letterSpacing: "0.1em",
+                      color: colors.ink,
+                      borderRadius: 0,
+                      "&.Mui-selected": {
+                        bgcolor: colors.ink,
+                        color: colors.ivory,
+                        "&:hover": { bgcolor: colors.ink },
+                      },
+                    },
+                  }}
+                />
+              </Stack>
+            ) : null}
           </Grid>
-
-          {!loading && products.length === 0 && !error ? (
-            <Typography variant="body1" sx={{ color: alpha(colors.text, 0.7) }}>
-              No products matched the selected filters.
-            </Typography>
-          ) : null}
-
-          <Stack alignItems="center" sx={{ pt: 1 }}>
-            <Pagination
-              page={page}
-              count={Math.max(totalPages, 1)}
-              onChange={(_, nextPage) => setPage(nextPage)}
-              color="primary"
-              shape="rounded"
-            />
-          </Stack>
-        </Stack>
+        </Grid>
       </Container>
     </Box>
   );

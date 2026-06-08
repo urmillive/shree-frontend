@@ -1,19 +1,33 @@
-import { List, ListItemButton, ListItemText, Paper, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { colors } from "../../theme/theme";
+import { Box, List, ListItemButton, ListItemText, Typography } from "@mui/material";
+import { colors, fonts } from "../../theme/theme";
 
-export default function CategorySidebar({ categories, selectedCategoryId, onSelect }) {
+export default function CategorySidebar({
+  categories,
+  selectedCategoryId,
+  onSelect,
+}) {
   return (
-    <Paper
-      elevation={0}
+    <Box
       sx={{
-        border: `1px solid ${alpha(colors.text, 0.12)}`,
-        borderRadius: 2,
-        overflow: "hidden",
+        borderTop: `1px solid ${colors.line}`,
+        borderBottom: `1px solid ${colors.line}`,
+        bgcolor: colors.paper,
       }}
     >
-      <Typography variant="subtitle1" sx={{ fontWeight: 700, p: 2, borderBottom: `1px solid ${alpha(colors.text, 0.08)}` }}>
-        Main Categories
+      <Typography
+        sx={{
+          fontFamily: fonts.body,
+          fontSize: 11,
+          letterSpacing: "0.22em",
+          textTransform: "uppercase",
+          fontWeight: 500,
+          color: colors.ink,
+          px: 2,
+          py: 2.25,
+          borderBottom: `1px solid ${colors.line}`,
+        }}
+      >
+        Categories
       </Typography>
       <List disablePadding>
         {categories.map((category) => {
@@ -24,26 +38,33 @@ export default function CategorySidebar({ categories, selectedCategoryId, onSele
               selected={selected}
               onClick={() => onSelect(category)}
               sx={{
-                transition: "all 0.2s ease",
+                px: 2,
+                py: 1.25,
+                borderLeft: "2px solid transparent",
+                borderRadius: 0,
                 "&.Mui-selected": {
-                  bgcolor: alpha(colors.primary, 0.12),
-                  borderLeft: `4px solid ${colors.primary}`,
+                  bgcolor: "transparent",
+                  borderLeftColor: colors.ink,
                 },
-                "&.Mui-selected:hover": {
-                  bgcolor: alpha(colors.primary, 0.18),
-                },
+                "&.Mui-selected:hover": { bgcolor: "transparent" },
+                "&:hover": { bgcolor: "transparent" },
               }}
             >
               <ListItemText
                 primary={category.name}
                 primaryTypographyProps={{
-                  fontWeight: selected ? 700 : 500,
+                  fontFamily: fonts.body,
+                  fontSize: 13,
+                  letterSpacing: "0.04em",
+                  fontWeight: selected ? 600 : 400,
+                  color: selected ? colors.ink : colors.ink2,
+                  textTransform: "none",
                 }}
               />
             </ListItemButton>
           );
         })}
       </List>
-    </Paper>
+    </Box>
   );
 }

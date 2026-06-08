@@ -17,8 +17,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import { FiHeart, FiHome, FiLogOut, FiMenu, FiShoppingCart, FiUser, FiX } from "react-icons/fi";
+import { FiHeart, FiMenu, FiShoppingBag, FiUser, FiX } from "react-icons/fi";
 import { MdExpandMore } from "react-icons/md";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import client, {
@@ -33,30 +32,68 @@ import {
   getPublicCategorySlug,
   normalizePublicCategoryTreePayload,
 } from "../services/publicCategoriesService";
-import { colors } from "../../theme/theme";
+import { colors, fonts, inkAlpha } from "../../theme/theme";
 import { useCart } from "../context/CartContext";
 import { useWishlist } from "../context/WishlistContext";
 
 const drawerWidth = 320;
 
-const linkButtonSx = {
-  textTransform: "none",
-  fontWeight: 600,
-  fontSize: 14,
-  color: colors.text,
-  px: 1.25,
-  py: 0.5,
-  minWidth: 0,
-  "&:hover": { bgcolor: alpha(colors.primary, 0.08), color: colors.primary },
+const announcementMessages = [
+  "Complimentary shipping on orders above ₹2,499",
+  "New arrivals · curated weekly",
+  "Returns within 7 days · hassle-free",
+];
+
+const wordmarkSx = {
+  fontFamily: fonts.display,
+  fontWeight: 500,
+  letterSpacing: { xs: "0.32em", sm: "0.38em" },
+  fontSize: { xs: 16, sm: 20 },
+  lineHeight: 1,
+  color: colors.ink,
+  textTransform: "uppercase",
+  whiteSpace: "nowrap",
 };
 
-const getNodeChildren = (node) => (Array.isArray(node?.children) ? node.children : []);
+const navLinkSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.18em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.ink,
+  px: 1.5,
+  py: 1,
+  minWidth: 0,
+  borderRadius: 0,
+  position: "relative",
+  "&::after": {
+    content: '""',
+    position: "absolute",
+    left: 14,
+    right: 14,
+    bottom: 6,
+    height: "1px",
+    background: colors.ink,
+    transform: "scaleX(0)",
+    transformOrigin: "left",
+    transition: "transform 200ms cubic-bezier(0.2,0.7,0.2,1)",
+  },
+  "&:hover": {
+    backgroundColor: "transparent",
+    color: colors.wine,
+    "&::after": { transform: "scaleX(1)", background: colors.wine },
+  },
+};
+
+const getNodeChildren = (node) =>
+  Array.isArray(node?.children) ? node.children : [];
 
 function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
   if (!Array.isArray(nodes) || nodes.length === 0) return null;
 
   return (
-    <Stack spacing={0.5}>
+    <Stack spacing={0}>
       {nodes.map((node, idx) => {
         const slug = getPublicCategorySlug(node);
         const name = getPublicCategoryName(node);
@@ -74,13 +111,14 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
               sx={{
                 justifyContent: "flex-start",
                 textTransform: "none",
-                fontWeight: 500,
-                color: colors.text,
-                pl: 1 + level * 1.75,
-                py: 0.6,
+                fontWeight: 400,
+                fontSize: 14,
+                color: colors.ink,
+                pl: 1 + level * 1.5,
+                py: 0.85,
                 minHeight: 0,
-                borderRadius: 1.2,
-                "&:hover": { bgcolor: alpha(colors.primary, 0.08) },
+                borderRadius: 0,
+                "&:hover": { color: colors.wine, backgroundColor: "transparent" },
               }}
             >
               {name}
@@ -100,10 +138,10 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
             }}
           >
             <AccordionSummary
-              expandIcon={<MdExpandMore size={20} />}
+              expandIcon={<MdExpandMore size={18} color={colors.muted} />}
               sx={{
                 px: 0.25,
-                pl: 1 + level * 1.75,
+                pl: 1 + level * 1.5,
                 py: 0,
                 minHeight: 40,
                 "& .MuiAccordionSummary-content": { my: 0.5 },
@@ -116,19 +154,28 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
                   onClick={onNodeClick}
                   sx={{
                     textDecoration: "none",
-                    color: colors.text,
-                    fontWeight: 600,
-                    "&:hover": { color: colors.primary },
+                    color: colors.ink,
+                    fontWeight: 500,
+                    fontSize: 14,
+                    "&:hover": { color: colors.wine },
                   }}
                 >
                   {name}
                 </Typography>
               ) : (
-                <Typography sx={{ color: colors.text, fontWeight: 600 }}>{name}</Typography>
+                <Typography
+                  sx={{ color: colors.ink, fontWeight: 500, fontSize: 14 }}
+                >
+                  {name}
+                </Typography>
               )}
             </AccordionSummary>
             <AccordionDetails sx={{ pt: 0, pb: 0.5, px: 0 }}>
-              <MobileCategoryTree nodes={children} level={level + 1} onNodeClick={onNodeClick} />
+              <MobileCategoryTree
+                nodes={children}
+                level={level + 1}
+                onNodeClick={onNodeClick}
+              />
             </AccordionDetails>
           </Accordion>
         );
@@ -137,11 +184,61 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
   );
 }
 
+const AnnouncementBar = () => {
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(
+      () => setIdx((i) => (i + 1) % announcementMessages.length),
+      4500
+    );
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Box
+      sx={{
+        bgcolor: colors.ink,
+        color: colors.ivory,
+        textAlign: "center",
+        py: 1,
+        px: 2,
+        fontFamily: fonts.body,
+        fontSize: 11,
+        letterSpacing: "0.22em",
+        textTransform: "uppercase",
+        fontWeight: 400,
+        minHeight: 32,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Box
+        key={idx}
+        sx={{
+          opacity: 0,
+          animation: "sg-fade 4.5s ease-in-out infinite",
+          "@keyframes sg-fade": {
+            "0%": { opacity: 0, transform: "translateY(2px)" },
+            "12%, 88%": { opacity: 1, transform: "translateY(0)" },
+            "100%": { opacity: 0, transform: "translateY(-2px)" },
+          },
+        }}
+      >
+        {announcementMessages[idx]}
+      </Box>
+    </Box>
+  );
+};
+
 const CustomerNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(() => Boolean(getStoredAccessToken()));
+  const [loggedIn, setLoggedIn] = useState(() =>
+    Boolean(getStoredAccessToken())
+  );
   const [loggingOut, setLoggingOut] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
   const { cart } = useCart();
@@ -171,14 +268,8 @@ const CustomerNavbar = () => {
     };
   }, []);
 
-
-  const handleDrawerToggle = () => {
-    setMobileOpen((open) => !open);
-  };
-
-  const closeDrawer = () => {
-    setMobileOpen(false);
-  };
+  const handleDrawerToggle = () => setMobileOpen((open) => !open);
+  const closeDrawer = () => setMobileOpen(false);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -199,8 +290,40 @@ const CustomerNavbar = () => {
   const displayName = getStoredUserDisplayName();
   const showAdminEntry = role === "super_admin" || role === "manager";
 
-
   const desktopNav = (
+    <Stack
+      direction="row"
+      alignItems="center"
+      spacing={0}
+      sx={{
+        display: { xs: "none", md: "flex" },
+        position: { md: "absolute" },
+        left: { md: "50%" },
+        transform: { md: "translateX(-50%)" },
+      }}
+    >
+      <Button component={RouterLink} to="/" sx={navLinkSx}>
+        Home
+      </Button>
+      <Button component={RouterLink} to="/products" sx={navLinkSx}>
+        Shop
+      </Button>
+      <Button component={RouterLink} to="/categories" sx={navLinkSx}>
+        Categories
+      </Button>
+      {showAdminEntry ? (
+        <Button
+          component={RouterLink}
+          to="/admin/dashboard"
+          sx={{ ...navLinkSx, color: colors.wine }}
+        >
+          Admin
+        </Button>
+      ) : null}
+    </Stack>
+  );
+
+  const desktopActions = (
     <Stack
       direction="row"
       alignItems="center"
@@ -209,190 +332,211 @@ const CustomerNavbar = () => {
         display: { xs: "none", md: "flex" },
         ml: "auto",
         flexShrink: 0,
-        justifyContent: "flex-end",
       }}
     >
-      <Button component={RouterLink} to="/" sx={linkButtonSx}>
-        Home
-      </Button>
-      <Button component={RouterLink} to="/products" sx={linkButtonSx}>
-        Products
-      </Button>
-      <IconButton component={RouterLink} to="/cart" color="inherit" aria-label="Cart" size="small">
-        <Badge color="primary" badgeContent={cart?.itemCount || 0} max={99}>
-          <FiShoppingCart size={20} />
-        </Badge>
-      </IconButton>
       {loggedIn ? (
-        <IconButton component={RouterLink} to="/wishlist" color="inherit" aria-label="Wishlist" size="small">
-          <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
+        <IconButton
+          component={RouterLink}
+          to="/wishlist"
+          aria-label="Wishlist"
+          size="small"
+          sx={{ color: colors.ink, "&:hover": { color: colors.wine } }}
+        >
+          <Badge color="secondary" badgeContent={wishlist?.total || 0} max={99}>
             <FiHeart size={20} />
           </Badge>
         </IconButton>
       ) : null}
       {loggedIn ? (
-        <Button component={RouterLink} to="/orders" sx={linkButtonSx}>
-          Orders
-        </Button>
-      ) : null}
-      {loggedIn ? (
-        <Button component={RouterLink} to="/profile" sx={linkButtonSx}>
-          Profile
-        </Button>
-      ) : null}
-      {showAdminEntry ? (
-        <Button component={RouterLink} to="/admin/dashboard" sx={{ ...linkButtonSx, color: colors.primary }}>
-          Admin
-        </Button>
-      ) : null}
-      {!loggedIn ? (
-        <>
-          <Button component={RouterLink} to="/login" sx={linkButtonSx}>
-            Sign in
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/signup"
-            variant="contained"
-            sx={{
-              textTransform: "none",
-              fontWeight: 700,
-              fontSize: 14,
-              ml: 0.5,
-              bgcolor: colors.buttonBackground,
-              color: colors.buttonText,
-              px: 2,
-              boxShadow: "none",
-              "&:hover": {
-                bgcolor: colors.buttonBackground,
-                filter: "brightness(0.94)",
-                boxShadow: `0 4px 14px ${alpha(colors.primary, 0.35)}`,
-              },
-            }}
-          >
-            Create account
-          </Button>
-        </>
+        <IconButton
+          component={RouterLink}
+          to="/profile"
+          aria-label="Account"
+          size="small"
+          sx={{ color: colors.ink, "&:hover": { color: colors.wine } }}
+        >
+          <FiUser size={20} />
+        </IconButton>
       ) : (
         <Button
-          variant="outlined"
+          component={RouterLink}
+          to="/login"
+          sx={{ ...navLinkSx, px: 1.25 }}
+        >
+          Sign in
+        </Button>
+      )}
+      <IconButton
+        component={RouterLink}
+        to="/cart"
+        aria-label="Cart"
+        size="small"
+        sx={{ color: colors.ink, "&:hover": { color: colors.wine } }}
+      >
+        <Badge color="secondary" badgeContent={cart?.itemCount || 0} max={99}>
+          <FiShoppingBag size={20} />
+        </Badge>
+      </IconButton>
+      {loggedIn ? (
+        <Button
+          variant="text"
           onClick={handleLogout}
           disabled={loggingOut}
-          sx={{
-            textTransform: "none",
-            fontWeight: 600,
-            fontSize: 14,
-            ml: 1,
-            borderColor: alpha(colors.primary, 0.45),
-            color: colors.primary,
-            "&:hover": {
-              borderColor: colors.primary,
-              bgcolor: alpha(colors.primary, 0.06),
-            },
-          }}
+          sx={{ ...navLinkSx, ml: 0.5, color: colors.muted }}
         >
           {loggingOut ? "Signing out…" : "Sign out"}
         </Button>
-      )}
+      ) : null}
     </Stack>
   );
 
   const drawer = (
-    <Box sx={{ pt: 1, pb: 2 }} role="presentation">
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 2, pb: 1 }}>
-        <Typography variant="subtitle1" fontWeight={700} color={colors.text}>
-          Menu
+    <Box sx={{ pt: 2, pb: 3, bgcolor: colors.paper, height: "100%" }} role="presentation">
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="space-between"
+        sx={{ px: 2.5, pb: 2 }}
+      >
+        <Typography sx={{ ...wordmarkSx, fontSize: 14 }}>
+          Shree Gallery
         </Typography>
         <IconButton onClick={closeDrawer} aria-label="Close menu" size="small">
-          <FiX size={22} />
+          <FiX size={20} />
         </IconButton>
       </Stack>
-      <Divider />
-      <List dense sx={{ px: 1, pt: 1 }}>
+      <Divider sx={{ borderColor: colors.line }} />
+
+      <List
+        sx={{
+          px: 1.5,
+          pt: 1.5,
+          "& .MuiListItemButton-root": {
+            py: 1.1,
+            borderRadius: 0,
+            "&:hover": { backgroundColor: "transparent" },
+            "& .MuiListItemText-primary": {
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              color: colors.ink,
+            },
+          },
+        }}
+      >
         <ListItemButton component={RouterLink} to="/" onClick={closeDrawer}>
-          <ListItemText primary="Home" primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemText primary="Home" />
         </ListItemButton>
         <ListItemButton component={RouterLink} to="/products" onClick={closeDrawer}>
-          <ListItemText primary="Products" primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemText primary="Shop" />
+        </ListItemButton>
+        <ListItemButton component={RouterLink} to="/categories" onClick={closeDrawer}>
+          <ListItemText primary="Categories" />
         </ListItemButton>
         <ListItemButton component={RouterLink} to="/cart" onClick={closeDrawer}>
-          <ListItemText primary={`Cart (${cart?.itemCount || 0})`} primaryTypographyProps={{ fontWeight: 600 }} />
+          <ListItemText primary={`Cart (${cart?.itemCount || 0})`} />
         </ListItemButton>
         {loggedIn ? (
           <ListItemButton component={RouterLink} to="/wishlist" onClick={closeDrawer}>
-            <ListItemText primary={`Wishlist (${wishlist?.total || 0})`} primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary={`Wishlist (${wishlist?.total || 0})`} />
           </ListItemButton>
         ) : null}
         {loggedIn ? (
           <ListItemButton component={RouterLink} to="/orders" onClick={closeDrawer}>
-            <ListItemText primary="Orders" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="Orders" />
           </ListItemButton>
         ) : null}
         {loggedIn ? (
           <ListItemButton component={RouterLink} to="/profile" onClick={closeDrawer}>
-            <ListItemText primary="Profile" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="Profile" />
           </ListItemButton>
         ) : null}
         {showAdminEntry ? (
           <ListItemButton component={RouterLink} to="/admin/dashboard" onClick={closeDrawer}>
-            <ListItemText primary="Admin dashboard" primaryTypographyProps={{ fontWeight: 600 }} />
+            <ListItemText primary="Admin" />
           </ListItemButton>
         ) : null}
         {!loggedIn ? (
           <>
             <ListItemButton component={RouterLink} to="/login" onClick={closeDrawer}>
-              <ListItemText primary="Sign in" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemText primary="Sign in" />
             </ListItemButton>
             <ListItemButton component={RouterLink} to="/signup" onClick={closeDrawer}>
-              <ListItemText primary="Create account" primaryTypographyProps={{ fontWeight: 600 }} />
+              <ListItemText primary="Create account" />
             </ListItemButton>
           </>
         ) : (
           <ListItemButton disabled={loggingOut} onClick={() => void handleLogout()}>
-            <ListItemText
-              primary={loggingOut ? "Signing out…" : "Sign out"}
-              primaryTypographyProps={{ fontWeight: 600 }}
-            />
+            <ListItemText primary={loggingOut ? "Signing out…" : "Sign out"} />
           </ListItemButton>
         )}
       </List>
-      <Divider sx={{ my: 1 }} />
-      <Box sx={{ px: 1.25 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 14, mb: 0.5, color: alpha(colors.text, 0.8) }}>
+
+      <Divider sx={{ my: 2, mx: 2.5, borderColor: colors.line }} />
+
+      <Box sx={{ px: 2.5 }}>
+        <Typography
+          sx={{
+            fontFamily: fonts.body,
+            fontSize: 11,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            fontWeight: 500,
+            color: colors.muted,
+            mb: 1.25,
+          }}
+        >
           Categories
         </Typography>
         {categoryTree.length > 0 ? (
           <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
         ) : (
-          <Typography sx={{ fontSize: 13, color: alpha(colors.text, 0.55), py: 0.6 }}>
+          <Typography
+            sx={{ fontSize: 13, color: colors.muted, py: 0.6 }}
+          >
             Categories will appear here soon.
           </Typography>
         )}
       </Box>
+
+      {loggedIn && displayName ? (
+        <>
+          <Divider sx={{ my: 2, mx: 2.5, borderColor: colors.line }} />
+          <Typography sx={{ px: 2.5, fontSize: 13, color: colors.muted }}>
+            Signed in as <strong style={{ color: colors.ink }}>{displayName}</strong>
+          </Typography>
+        </>
+      ) : null}
     </Box>
   );
 
   return (
     <>
+      <AnnouncementBar />
       <AppBar
         position="sticky"
         elevation={0}
         sx={{
-          bgcolor: alpha(colors.background, 0.92),
-          backdropFilter: "blur(10px)",
-          borderBottom: `1px solid ${alpha(colors.text, 0.08)}`,
-          color: colors.text,
+          bgcolor: colors.ivory,
+          backdropFilter: "saturate(180%) blur(8px)",
+          backgroundColor: inkAlpha(0.0),
+          background: `${colors.ivory}`,
+          borderBottom: `1px solid ${colors.line}`,
+          color: colors.ink,
+          top: 0,
         }}
       >
         <Toolbar
           sx={{
-            maxWidth: 1200,
+            maxWidth: 1440,
             width: "100%",
             mx: "auto",
-            px: { xs: 1.5, sm: 2 },
-            minHeight: { xs: 56, sm: 64 },
+            px: { xs: 2, sm: 3 },
+            minHeight: { xs: 56, sm: 72 },
             gap: 1,
-            justifyContent: "flex-start",
+            position: "relative",
           }}
         >
           <IconButton
@@ -400,7 +544,11 @@ const CustomerNavbar = () => {
             aria-label="Open navigation menu"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ display: { md: "none" }, mr: 0.5 }}
+            sx={{
+              display: { md: "none" },
+              mr: 0.5,
+              color: colors.ink,
+            }}
           >
             <FiMenu size={22} />
           </IconButton>
@@ -411,100 +559,64 @@ const CustomerNavbar = () => {
             sx={{
               display: "flex",
               alignItems: "center",
-              gap: 1.25,
               textDecoration: "none",
               color: "inherit",
-              flexGrow: { xs: 0, md: 0 },
               minWidth: 0,
+              mr: { md: 0 },
             }}
           >
-            <Box
-              sx={{
-                width: 40,
-                height: 40,
-                borderRadius: 2,
-                display: "grid",
-                placeItems: "center",
-                background: `linear-gradient(135deg, ${alpha(colors.primary, 0.95)} 0%, ${colors.primary} 100%)`,
-                boxShadow: `0 6px 18px ${alpha(colors.primary, 0.35)}`,
-                flexShrink: 0,
-              }}
-            >
-              <Typography sx={{ color: colors.onPrimary, fontWeight: 800, fontSize: 15, letterSpacing: -0.5 }}>S</Typography>
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography
-                component="span"
-                sx={{
-                  fontWeight: 800,
-                  fontSize: { xs: 16, sm: 17 },
-                  lineHeight: 1.15,
-                  display: "block",
-                  letterSpacing: -0.3,
-                }}
-              >
-                Shree Fashion
-              </Typography>
-              {loggedIn && displayName ? (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    display: { xs: "none", sm: "block" },
-                    color: alpha(colors.text, 0.55),
-                    fontWeight: 500,
-                    lineHeight: 1.2,
-                    maxWidth: 200,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  Hi, {displayName}
-                </Typography>
-              ) : null}
-            </Box>
+            <Typography component="span" sx={wordmarkSx}>
+              Shree Gallery
+            </Typography>
           </Box>
+
+          {desktopNav}
 
           <Stack
             direction="row"
             alignItems="center"
             spacing={0}
-            sx={{ display: { xs: "flex", md: "none" }, ml: "auto", flexShrink: 0 }}
+            sx={{ display: { xs: "flex", md: "none" }, ml: "auto" }}
           >
-            <IconButton component={RouterLink} to="/" color="inherit" aria-label="Home" size="small">
-              <FiHome size={20} />
-            </IconButton>
-            <IconButton component={RouterLink} to="/cart" color="inherit" aria-label="Cart" size="small">
-              <Badge color="primary" badgeContent={cart?.itemCount || 0} max={99}>
-                <FiShoppingCart size={18} />
+            <IconButton
+              component={RouterLink}
+              to="/cart"
+              aria-label="Cart"
+              size="small"
+              sx={{ color: colors.ink }}
+            >
+              <Badge
+                color="secondary"
+                badgeContent={cart?.itemCount || 0}
+                max={99}
+              >
+                <FiShoppingBag size={20} />
               </Badge>
             </IconButton>
             {loggedIn ? (
-              <IconButton component={RouterLink} to="/wishlist" color="inherit" aria-label="Wishlist" size="small">
-                <Badge color="primary" badgeContent={wishlist?.total || 0} max={99}>
-                  <FiHeart size={18} />
-                </Badge>
+              <IconButton
+                component={RouterLink}
+                to="/profile"
+                aria-label="Account"
+                size="small"
+                sx={{ color: colors.ink }}
+              >
+                <FiUser size={20} />
               </IconButton>
-            ) : null}
-            {loggedIn ? (
-              <>
-                <IconButton component={RouterLink} to="/profile" color="inherit" aria-label="Profile" size="small">
-                  <FiUser size={20} />
-                </IconButton>
-                <IconButton
-                  color="inherit"
-                  aria-label="Sign out"
-                  size="small"
-                  disabled={loggingOut}
-                  onClick={() => void handleLogout()}
-                >
-                  <FiLogOut size={20} />
-                </IconButton>
-              </>
-            ) : null}
+            ) : (
+              <IconButton
+                component={RouterLink}
+                to="/login"
+                aria-label="Sign in"
+                size="small"
+                sx={{ color: colors.ink }}
+              >
+                <FiUser size={20} />
+              </IconButton>
+            )}
           </Stack>
 
-          {desktopNav}
+          {desktopActions}
         </Toolbar>
       </AppBar>
 
@@ -518,7 +630,8 @@ const CustomerNavbar = () => {
           "& .MuiDrawer-paper": {
             boxSizing: "border-box",
             width: drawerWidth,
-            bgcolor: colors.background,
+            bgcolor: colors.paper,
+            borderRight: `1px solid ${colors.line}`,
           },
         }}
       >

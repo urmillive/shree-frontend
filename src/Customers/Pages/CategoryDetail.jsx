@@ -4,10 +4,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardActionArea,
-  CardContent,
-  CircularProgress,
   Container,
   Grid,
   Pagination,
@@ -15,7 +11,6 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
 import CategoryBreadcrumb from "../components/CategoryBreadcrumb";
 import ProductCard from "../components/ProductCard";
 import {
@@ -26,15 +21,23 @@ import {
   normalizePublicCategoryChildrenPayload,
   normalizePublicCategoryDetailPayload,
 } from "../services/publicCategoriesService";
-import { fetchPublicProducts, normalizeProductsPayload } from "../services/publicProductsService";
-import { colors, primaryAlpha } from "../../theme/theme";
+import {
+  fetchPublicProducts,
+  normalizeProductsPayload,
+} from "../services/publicProductsService";
+import { colors, fonts } from "../../theme/theme";
 
 const PRODUCTS_LIMIT = 12;
 
 const renderProductSkeletons = () =>
   Array.from({ length: 8 }).map((_, idx) => (
-    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={idx}>
-      <Skeleton variant="rounded" height={360} />
+    <Grid size={{ xs: 6, sm: 6, md: 4, lg: 3 }} key={idx}>
+      <Skeleton
+        variant="rectangular"
+        sx={{ aspectRatio: "3 / 4", borderRadius: 0, bgcolor: colors.stone }}
+      />
+      <Skeleton sx={{ mt: 1.5, bgcolor: colors.stone }} width="60%" />
+      <Skeleton sx={{ bgcolor: colors.stone }} width="30%" />
     </Grid>
   ));
 
@@ -76,7 +79,8 @@ const CategoryDetail = () => {
         fetchPublicCategoryChildren(slug).catch(() => ({ data: null })),
       ]);
 
-      const { category: cat, breadcrumb: crumbs } = normalizePublicCategoryDetailPayload(detailRes?.data);
+      const { category: cat, breadcrumb: crumbs } =
+        normalizePublicCategoryDetailPayload(detailRes?.data);
       if (!cat || typeof cat !== "object") {
         setError("Category not found.");
         setCategory(null);
@@ -95,7 +99,10 @@ const CategoryDetail = () => {
       setError(
         status === 404
           ? "This category does not exist or is no longer available."
-          : err?.response?.data?.message || err?.message || "Could not load category."
+          : err?.response?.data?.error?.message ||
+              err?.response?.data?.message ||
+              err?.message ||
+              "Could not load category."
       );
       setCategory(null);
       setBreadcrumb([]);
@@ -137,10 +144,17 @@ const CategoryDetail = () => {
         const normalized = normalizeProductsPayload(response?.data);
         setProducts(normalized.products);
         setTotalPages(Number(normalized.totalPages) || 1);
-        setTotalProducts(Number(normalized.total) || normalized.products.length);
+        setTotalProducts(
+          Number(normalized.total) || normalized.products.length
+        );
       } catch (err) {
         if (cancelled) return;
-        setProductsError(err?.response?.data?.message || err?.message || "Unable to load products.");
+        setProductsError(
+          err?.response?.data?.error?.message ||
+            err?.response?.data?.message ||
+            err?.message ||
+            "Unable to load products."
+        );
         setProducts([]);
         setTotalProducts(0);
         setTotalPages(1);
@@ -169,171 +183,353 @@ const CategoryDetail = () => {
     null;
 
   return (
-    <Box
-      sx={{
-        flex: 1,
-        width: "100%",
-        minHeight: "100%",
-        bgcolor: colors.background,
-        color: colors.text,
-        py: { xs: 2, sm: 3 },
-      }}
-    >
-      <Container maxWidth="lg" sx={{ px: { xs: 2, sm: 3 } }}>
-        <Stack spacing={2.5}>
-          {error ? (
-            <Alert
-              severity="error"
-              action={
-                <Button component={RouterLink} to="/categories" color="inherit" size="small">
-                  All categories
-                </Button>
-              }
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink }}>
+      {/* Hero with optional image */}
+      {!loading && category && imageUrl ? (
+        <Box
+          sx={{
+            position: "relative",
+            height: { xs: 320, sm: 420, md: 480 },
+            overflow: "hidden",
+            bgcolor: colors.stone,
+          }}
+        >
+          <Box
+            component="img"
+            src={imageUrl}
+            alt=""
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.5) 100%)",
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              left: { xs: 24, sm: 64 },
+              right: { xs: 24, sm: 64 },
+              bottom: { xs: 32, sm: 64 },
+              color: colors.ivory,
+              maxWidth: 720,
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: fonts.body,
+                fontSize: 11,
+                letterSpacing: "0.28em",
+                textTransform: "uppercase",
+                fontWeight: 500,
+                color: colors.ivory,
+                opacity: 0.92,
+                mb: 1.5,
+              }}
             >
-              {error}
-            </Alert>
-          ) : null}
+              Category
+            </Typography>
+            <Typography
+              component="h1"
+              sx={{
+                fontFamily: fonts.display,
+                fontSize: { xs: 36, sm: 56, md: 68 },
+                fontWeight: 500,
+                color: colors.ivory,
+                lineHeight: 1.05,
+                letterSpacing: "-0.01em",
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
+        </Box>
+      ) : null}
 
-          {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress size={40} sx={{ color: colors.primary }} aria-label="Loading category" />
-            </Box>
-          ) : category ? (
-            <>
-              <CategoryBreadcrumb items={breadcrumb} />
-
-              <Stack
-                direction={{ xs: "column", md: "row" }}
-                spacing={3}
-                alignItems={{ xs: "stretch", md: "flex-start" }}
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 1440, px: { xs: 3, sm: 5 }, py: { xs: 5, sm: 8 } }}
+      >
+        {error ? (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                component={RouterLink}
+                to="/categories"
+                color="inherit"
+                size="small"
               >
-                {imageUrl ? (
-                  <Box
-                    component="img"
-                    src={imageUrl}
-                    alt=""
-                    sx={{
-                      width: { xs: "100%", md: 280 },
-                      maxHeight: 280,
-                      objectFit: "cover",
-                      borderRadius: 2,
-                      border: `1px solid ${primaryAlpha(0.25)}`,
-                      flexShrink: 0,
-                    }}
-                  />
-                ) : null}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography variant="h4" component="h1" sx={{ fontWeight: 800, letterSpacing: -0.5, mb: 1 }}>
-                    {title}
-                  </Typography>
-                  {slug ? (
-                    <Typography variant="caption" sx={{ color: alpha(colors.text, 0.5), display: "block", mb: 1 }}>
-                      /{slug}
-                    </Typography>
-                  ) : null}
-                  {description ? (
-                    <Typography variant="body1" sx={{ color: alpha(colors.text, 0.78), lineHeight: 1.65 }}>
-                      {description}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" sx={{ color: alpha(colors.text, 0.55) }}>
-                      Explore subcategories below.
-                    </Typography>
-                  )}
-                </Box>
-              </Stack>
+                All categories
+              </Button>
+            }
+            sx={{ borderRadius: 0, border: `1px solid ${colors.danger}`, mb: 3 }}
+          >
+            {error}
+          </Alert>
+        ) : null}
 
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 12 }}>
+            <Skeleton
+              variant="rectangular"
+              width="100%"
+              height={400}
+              sx={{ bgcolor: colors.stone }}
+            />
+          </Box>
+        ) : category ? (
+          <Stack spacing={{ xs: 5, sm: 7 }}>
+            <CategoryBreadcrumb items={breadcrumb} />
+
+            {/* Title block (only shown when no hero image) */}
+            {!imageUrl ? (
+              <Box sx={{ textAlign: "center", py: { xs: 2, sm: 4 } }}>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.body,
+                    fontSize: 11,
+                    letterSpacing: "0.28em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
+                    color: colors.muted,
+                    mb: 1.5,
+                  }}
+                >
+                  Category
+                </Typography>
+                <Typography
+                  component="h1"
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: { xs: 34, sm: 52 },
+                    fontWeight: 500,
+                    color: colors.ink,
+                    letterSpacing: "-0.01em",
+                    lineHeight: 1.05,
+                  }}
+                >
+                  {title}
+                </Typography>
+                {description ? (
+                  <Typography
+                    sx={{
+                      mt: 2,
+                      color: colors.muted,
+                      fontSize: 14,
+                      maxWidth: 600,
+                      mx: "auto",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    {description}
+                  </Typography>
+                ) : null}
+              </Box>
+            ) : description ? (
+              <Box sx={{ textAlign: "center", maxWidth: 720, mx: "auto" }}>
+                <Typography
+                  sx={{
+                    color: colors.muted,
+                    fontSize: 14,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  {description}
+                </Typography>
+              </Box>
+            ) : null}
+
+            {/* Subcategory chips */}
+            {children.length > 0 ? (
               <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.body,
+                    fontSize: 11,
+                    letterSpacing: "0.22em",
+                    textTransform: "uppercase",
+                    fontWeight: 500,
+                    color: colors.ink,
+                    mb: 2,
+                  }}
+                >
                   Subcategories
                 </Typography>
-                {children.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: alpha(colors.text, 0.55) }}>
-                    No subcategories in this section yet.
-                  </Typography>
-                ) : (
-                  <Grid container spacing={2}>
-                    {children.map((child, index) => {
-                      const childSlug = getPublicCategorySlug(child);
-                      const childName = getPublicCategoryName(child);
-                      const key = childSlug || `${childName}-${index}`;
+                <Stack
+                  direction="row"
+                  flexWrap="wrap"
+                  useFlexGap
+                  spacing={1.5}
+                >
+                  {children.map((child, index) => {
+                    const childSlug = getPublicCategorySlug(child);
+                    const childName = getPublicCategoryName(child);
+                    const key = childSlug || `${childName}-${index}`;
+                    if (!childSlug) {
                       return (
-                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={key}>
-                          <Card
-                            elevation={0}
-                            sx={{
-                              border: `1px solid ${primaryAlpha(0.3)}`,
-                              borderRadius: 2,
-                              bgcolor: colors.background,
-                            }}
-                          >
-                            <CardActionArea
-                              component={childSlug ? RouterLink : "div"}
-                              to={childSlug ? `/categories/${encodeURIComponent(childSlug)}` : undefined}
-                              disabled={!childSlug}
-                              sx={{ alignItems: "stretch", height: "100%" }}
-                            >
-                              <CardContent>
-                                <Typography variant="subtitle1" fontWeight={700}>
-                                  {childName}
-                                </Typography>
-                                {!childSlug ? (
-                                  <Typography variant="caption" color="text.secondary">
-                                    No slug
-                                  </Typography>
-                                ) : null}
-                              </CardContent>
-                            </CardActionArea>
-                          </Card>
-                        </Grid>
-                      );
-                    })}
-                  </Grid>
-                )}
-              </Box>
-
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5 }}>
-                  Products in this category
-                </Typography>
-                {productsError ? <Alert severity="error">{productsError}</Alert> : null}
-                <Typography variant="body2" sx={{ color: alpha(colors.text, 0.66), mb: 2 }}>
-                  {productsLoading ? "Loading products..." : `${totalProducts} product${totalProducts === 1 ? "" : "s"} found`}
-                </Typography>
-                <Grid container spacing={2}>
-                  {productsLoading
-                    ? renderProductSkeletons()
-                    : products.map((product) => (
-                        <Grid
-                          size={{ xs: 12, sm: 6, md: 4, lg: 3 }}
-                          key={product?._id || product?.id || product?.slug || product?.name}
+                        <Box
+                          key={key}
+                          sx={{
+                            border: `1px solid ${colors.line}`,
+                            color: colors.muted,
+                            px: 2,
+                            py: 0.85,
+                            fontFamily: fonts.body,
+                            fontSize: 11,
+                            letterSpacing: "0.18em",
+                            textTransform: "uppercase",
+                          }}
                         >
-                          <ProductCard product={product} />
-                        </Grid>
-                      ))}
-                </Grid>
-                {!productsLoading && products.length === 0 && !productsError ? (
-                  <Typography variant="body2" sx={{ color: alpha(colors.text, 0.55), mt: 1 }}>
-                    No products in this category yet.
-                  </Typography>
-                ) : null}
-                {totalPages > 1 ? (
-                  <Stack alignItems="center" sx={{ pt: 2 }}>
-                    <Pagination
-                      page={page}
-                      count={Math.max(totalPages, 1)}
-                      onChange={(_, nextPage) => setPage(nextPage)}
-                      color="primary"
-                      shape="rounded"
-                    />
-                  </Stack>
-                ) : null}
+                          {childName}
+                        </Box>
+                      );
+                    }
+                    return (
+                      <Box
+                        key={key}
+                        component={RouterLink}
+                        to={`/categories/${encodeURIComponent(childSlug)}`}
+                        sx={{
+                          border: `1px solid ${colors.line}`,
+                          color: colors.ink,
+                          textDecoration: "none",
+                          px: 2,
+                          py: 0.85,
+                          fontFamily: fonts.body,
+                          fontSize: 11,
+                          letterSpacing: "0.18em",
+                          textTransform: "uppercase",
+                          fontWeight: 500,
+                          transition: "all 200ms cubic-bezier(0.2,0.7,0.2,1)",
+                          "&:hover": {
+                            bgcolor: colors.ink,
+                            color: colors.ivory,
+                            borderColor: colors.ink,
+                          },
+                        }}
+                      >
+                        {childName}
+                      </Box>
+                    );
+                  })}
+                </Stack>
               </Box>
-            </>
-          ) : !error ? (
-            <Typography color="text.secondary">Nothing to show.</Typography>
-          ) : null}
-        </Stack>
+            ) : null}
+
+            {/* Product grid */}
+            <Box>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="baseline"
+                sx={{ mb: 3 }}
+              >
+                <Typography
+                  component="h2"
+                  sx={{
+                    fontFamily: fonts.display,
+                    fontSize: { xs: 24, sm: 32 },
+                    fontWeight: 500,
+                    color: colors.ink,
+                  }}
+                >
+                  Pieces in {title}
+                </Typography>
+                <Typography
+                  sx={{
+                    fontFamily: fonts.body,
+                    fontSize: 12,
+                    letterSpacing: "0.06em",
+                    color: colors.muted,
+                  }}
+                >
+                  {productsLoading
+                    ? "Loading…"
+                    : `${totalProducts} ${totalProducts === 1 ? "piece" : "pieces"}`}
+                </Typography>
+              </Stack>
+
+              {productsError ? (
+                <Alert
+                  severity="error"
+                  sx={{ mb: 3, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+                >
+                  {productsError}
+                </Alert>
+              ) : null}
+
+              <Grid container spacing={{ xs: 2, sm: 3 }}>
+                {productsLoading
+                  ? renderProductSkeletons()
+                  : products.map((product) => (
+                      <Grid
+                        size={{ xs: 6, sm: 6, md: 4, lg: 3 }}
+                        key={
+                          product?._id ||
+                          product?.id ||
+                          product?.slug ||
+                          product?.name
+                        }
+                      >
+                        <ProductCard product={product} />
+                      </Grid>
+                    ))}
+              </Grid>
+
+              {!productsLoading && products.length === 0 && !productsError ? (
+                <Box sx={{ textAlign: "center", py: 8 }}>
+                  <Typography
+                    sx={{
+                      fontFamily: fonts.display,
+                      fontSize: 22,
+                      color: colors.ink,
+                    }}
+                  >
+                    No pieces in this category yet.
+                  </Typography>
+                </Box>
+              ) : null}
+
+              {totalPages > 1 ? (
+                <Stack alignItems="center" sx={{ pt: 5 }}>
+                  <Pagination
+                    page={page}
+                    count={Math.max(totalPages, 1)}
+                    onChange={(_, nextPage) => setPage(nextPage)}
+                    shape="rounded"
+                    sx={{
+                      "& .MuiPaginationItem-root": {
+                        fontFamily: fonts.body,
+                        fontSize: 12,
+                        letterSpacing: "0.1em",
+                        color: colors.ink,
+                        borderRadius: 0,
+                        "&.Mui-selected": {
+                          bgcolor: colors.ink,
+                          color: colors.ivory,
+                          "&:hover": { bgcolor: colors.ink },
+                        },
+                      },
+                    }}
+                  />
+                </Stack>
+              ) : null}
+            </Box>
+          </Stack>
+        ) : !error ? (
+          <Typography sx={{ color: colors.muted, textAlign: "center" }}>
+            Nothing to show.
+          </Typography>
+        ) : null}
       </Container>
     </Box>
   );

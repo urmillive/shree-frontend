@@ -4,92 +4,21 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Container,
-  Link,
   Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import client from "../../Setup/Axios";
-import { colors, primaryAlpha } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 
-const authLayout = {
-  pageBox: {
-    flex: 1,
-    width: "100%",
-    minHeight: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    px: { xs: 2, sm: 3 },
-    py: { xs: 3, md: 5 },
-    bgcolor: colors.background,
-    background: `radial-gradient(circle at top left, ${colors.background}, ${colors.background} 55%, ${primaryAlpha(0.15)})`,
-  },
-  card: {
-    borderRadius: 4,
-    bgcolor: colors.background,
-    color: colors.text,
-    p: { xs: 1.5, sm: 2 },
-    width: "100%",
-    border: `1px solid ${primaryAlpha(0.5)}`,
-  },
-  logoMark: {
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
-    mx: "auto",
-    mb: 1.5,
-    display: "grid",
-    placeItems: "center",
-    fontSize: 22,
-    fontWeight: 700,
-    color: colors.text,
-    bgcolor: colors.primary,
-  },
-  inputSx: {
-    "& .MuiInputLabel-root": { color: colors.label },
-    "& .MuiOutlinedInput-root": {
-      color: colors.text,
-      "& fieldset": { borderColor: colors.borderSubtle },
-      "&:hover fieldset": { borderColor: colors.primary },
-      "&.Mui-focused fieldset": { borderColor: colors.primary },
-    },
-  },
-  primaryButton: {
-    mt: 0.5,
-    py: 1.5,
-    fontWeight: 700,
-    bgcolor: colors.buttonBackground,
-    color: colors.buttonText,
-    "&:hover": {
-      bgcolor: colors.buttonBackground,
-      filter: "brightness(0.92)",
-    },
-    "&.Mui-disabled": {
-      bgcolor: colors.disabledOverlay,
-      color: colors.buttonText,
-    },
-  },
-  errorAlert: {
-    bgcolor: colors.mutedSurface,
-    color: colors.text,
-    border: `1px solid ${colors.borderStrong}`,
-  },
-  body2: {
-    mt: 1,
-    color: colors.text,
-  },
-  footerText: {
-    textAlign: "center",
-    color: colors.text,
-  },
-  link: {
-    color: colors.text,
-    fontWeight: 600,
-  },
+const eyebrowSx = {
+  fontFamily: fonts.body,
+  fontSize: 11,
+  letterSpacing: "0.28em",
+  textTransform: "uppercase",
+  fontWeight: 500,
+  color: colors.muted,
 };
 
 const Forgetpassword = () => {
@@ -100,13 +29,9 @@ const Forgetpassword = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email.trim()) newErrors.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       newErrors.email = "Invalid email format";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -114,16 +39,18 @@ const Forgetpassword = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setErrors({});
-
     if (!validateForm()) return;
-
     setLoading(true);
     try {
       await client.post("/auth/forgot-password", { email: email.trim() });
-      navigate("/resetpassword", { state: { email: email.trim() }, replace: true });
+      navigate("/resetpassword", {
+        state: { email: email.trim() },
+        replace: true,
+      });
     } catch (error) {
       setErrors({
         submit:
+          error.response?.data?.error?.message ||
           error.response?.data?.message ||
           "Something went wrong. Please try again.",
       });
@@ -133,58 +60,91 @@ const Forgetpassword = () => {
   };
 
   return (
-    <Box sx={authLayout.pageBox}>
-      <Container maxWidth="sm" disableGutters>
-        <Card sx={authLayout.card}>
-          <CardContent sx={{ p: { xs: 1.5, sm: 2 }, "&:last-child": { pb: { xs: 1.5, sm: 2 } } }}>
-            <Stack spacing={3}>
-              <Box textAlign="center">
-                <Box sx={authLayout.logoMark}>S</Box>
-                <Typography variant="h4" component="h1" fontWeight={700} fontSize={{ xs: "1.7rem", sm: "2rem" }}>
-                  Forgot password
-                </Typography>
-                <Typography variant="body2" sx={authLayout.body2}>
-                  Enter your email and we&apos;ll send you instructions to reset your password.
-                </Typography>
-              </Box>
+    <Box sx={{ bgcolor: colors.ivory, color: colors.ink, minHeight: "70vh" }}>
+      <Container
+        maxWidth={false}
+        sx={{ maxWidth: 460, px: { xs: 3, sm: 5 }, py: { xs: 6, sm: 10 } }}
+      >
+        <Stack spacing={1.5} sx={{ textAlign: "center", mb: 5 }}>
+          <Typography sx={eyebrowSx}>Forgot password</Typography>
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: { xs: 32, sm: 42 },
+              fontWeight: 500,
+              color: colors.ink,
+              letterSpacing: "-0.01em",
+              lineHeight: 1.05,
+            }}
+          >
+            Reset your password
+          </Typography>
+          <Typography sx={{ color: colors.muted, fontSize: 14, lineHeight: 1.65 }}>
+            We'll send a code to your inbox so you can set a new password.
+          </Typography>
+        </Stack>
 
-              {errors.submit && (
-                <Alert icon={false} sx={authLayout.errorAlert}>
-                  {errors.submit}
-                </Alert>
-              )}
+        {errors.submit ? (
+          <Alert
+            severity="error"
+            sx={{ mb: 2, borderRadius: 0, border: `1px solid ${colors.danger}` }}
+          >
+            {errors.submit}
+          </Alert>
+        ) : null}
 
-              <Box component="form" onSubmit={handleSubmit}>
-                <Stack spacing={2}>
-                  <TextField
-                    id="forgot-email"
-                    label="Email address"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    autoComplete="email"
-                    fullWidth
-                    error={Boolean(errors.email)}
-                    helperText={errors.email}
-                    sx={authLayout.inputSx}
-                  />
+        <Box component="form" onSubmit={handleSubmit}>
+          <Stack spacing={2.5}>
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              error={Boolean(errors.email)}
+              helperText={errors.email}
+              size="small"
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              size="large"
+              disabled={loading}
+              sx={{ py: 1.75 }}
+            >
+              {loading ? "Sending…" : "Send reset code"}
+            </Button>
+          </Stack>
+        </Box>
 
-                  <Button type="submit" variant="contained" color="primary" disabled={loading} sx={authLayout.primaryButton}>
-                    {loading ? "Sending..." : "Send reset link"}
-                  </Button>
-                </Stack>
-              </Box>
-
-              <Typography variant="body2" sx={authLayout.footerText}>
-                Remember your password?{" "}
-                <Link component={RouterLink} to="/login" underline="hover" fontWeight={600} sx={authLayout.link}>
-                  Back to login
-                </Link>
-              </Typography>
-            </Stack>
-          </CardContent>
-        </Card>
+        <Box
+          sx={{
+            mt: 4,
+            pt: 4,
+            borderTop: `1px solid ${colors.line}`,
+            textAlign: "center",
+          }}
+        >
+          <Box
+            component={RouterLink}
+            to="/login"
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 11,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              color: colors.muted,
+              textDecoration: "none",
+              "&:hover": { color: colors.ink },
+            }}
+          >
+            ← Back to sign in
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

@@ -1,79 +1,167 @@
-import { Box, Card, CardActionArea, CardContent, CardMedia, Chip, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Box, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { colors } from "../../theme/theme";
+import { colors, fonts } from "../../theme/theme";
 import {
   resolveProductImage,
   resolveProductName,
   resolveProductPrice,
 } from "../services/publicProductsService";
 
-const INR = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const INR = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
 
 const getCategoryName = (product) =>
-  product?.category?.name || product?.categoryName || product?.category?.slug || product?.category || "";
+  product?.category?.name ||
+  product?.categoryName ||
+  product?.category?.slug ||
+  product?.category ||
+  "";
+
+const getFlag = (product) => {
+  if (product?.isBestSeller) return "Best Seller";
+  if (product?.isFeatured) return "Featured";
+  if (product?.isTrending) return "Trending";
+  return "";
+};
 
 export default function ProductCard({ product }) {
   const name = resolveProductName(product);
   const image = resolveProductImage(product);
   const price = resolveProductPrice(product);
   const category = getCategoryName(product);
-  const fabric = product?.fabric || "";
-  const size = Array.isArray(product?.sizes) ? product.sizes.join(", ") : product?.size || "";
-  const flags = [
-    product?.isTrending ? "Trending" : "",
-    product?.isFeatured ? "Featured" : "",
-    product?.isBestSeller ? "Best Seller" : "",
-  ].filter(Boolean);
+  const flag = getFlag(product);
   const productSlug = product?.slug || product?.id || product?._id || "";
 
+  const InteractiveWrapper = productSlug ? RouterLink : "div";
+  const linkProps = productSlug ? { to: `/products/${productSlug}` } : {};
+
   return (
-    <Card
-      elevation={2}
+    <Box
+      component={InteractiveWrapper}
+      {...linkProps}
       sx={{
+        display: "block",
+        textDecoration: "none",
+        color: "inherit",
         height: "100%",
-        borderRadius: 2.5,
-        border: `1px solid ${alpha(colors.text, 0.08)}`,
-        transition: "transform .2s ease, box-shadow .2s ease",
-        "&:hover": { transform: "translateY(-4px)", boxShadow: 6 },
+        "&:hover .sg-card-img": { transform: "scale(1.04)" },
+        "&:hover .sg-card-name": { color: colors.wine },
       }}
     >
-      <CardActionArea
-        component={productSlug ? RouterLink : "div"}
-        to={productSlug ? `/products/${productSlug}` : undefined}
-        sx={{ height: "100%" }}
+      <Box
+        sx={{
+          position: "relative",
+          aspectRatio: "3 / 4",
+          overflow: "hidden",
+          bgcolor: colors.stone,
+          mb: 1.5,
+        }}
       >
         {image ? (
-          <CardMedia component="img" image={image} alt={name} sx={{ height: 220, objectFit: "cover" }} />
+          <Box
+            component="img"
+            className="sg-card-img"
+            src={image}
+            alt={name}
+            loading="lazy"
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transition: "transform 600ms cubic-bezier(0.2,0.7,0.2,1)",
+            }}
+          />
         ) : (
-          <Box sx={{ height: 220, bgcolor: alpha(colors.primary, 0.08), display: "grid", placeItems: "center" }}>
-            <Typography sx={{ fontWeight: 700, color: alpha(colors.text, 0.45) }}>No image</Typography>
+          <Box
+            sx={{
+              width: "100%",
+              height: "100%",
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <Typography
+              sx={{
+                fontFamily: fonts.display,
+                fontSize: 28,
+                color: colors.muted,
+              }}
+            >
+              {name?.charAt(0) || "S"}
+            </Typography>
           </Box>
         )}
 
-        <CardContent sx={{ display: "grid", gap: 1.1 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
-            {name}
-          </Typography>
-          <Typography variant="h6" sx={{ fontWeight: 800, color: colors.primary }}>
-            {INR.format(price)}
-          </Typography>
+        {flag ? (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 12,
+              left: 12,
+              bgcolor: colors.ivory,
+              color: colors.ink,
+              fontFamily: fonts.body,
+              fontSize: 10,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              fontWeight: 500,
+              px: 1.25,
+              py: 0.5,
+            }}
+          >
+            {flag}
+          </Box>
+        ) : null}
+      </Box>
 
-          {/* <Stack direction="row" spacing={0.8} useFlexGap flexWrap="wrap">
-            {category ? <Chip label={category} size="small" variant="outlined" /> : null}
-            {fabric ? <Chip label={fabric} size="small" variant="outlined" /> : null}
-            {size ? <Chip label={`Size: ${size}`} size="small" variant="outlined" /> : null}
-            {flags.map((flag) => (
-              <Chip
-                key={flag}
-                label={flag}
-                size="small"
-                sx={{ bgcolor: alpha(colors.primary, 0.12), color: colors.text, border: `1px solid ${alpha(colors.primary, 0.35)}` }}
-              />
-            ))}
-          </Stack> */}
-        </CardContent>
-      </CardActionArea>
-    </Card>
+      <Stack spacing={0.5} sx={{ px: 0.25 }}>
+        {category ? (
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 10,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: colors.muted,
+              fontWeight: 500,
+            }}
+          >
+            {category}
+          </Typography>
+        ) : null}
+        <Typography
+          className="sg-card-name"
+          sx={{
+            fontFamily: fonts.display,
+            fontSize: { xs: 17, sm: 18 },
+            fontWeight: 500,
+            lineHeight: 1.25,
+            color: colors.ink,
+            transition: "color 200ms cubic-bezier(0.2,0.7,0.2,1)",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {name}
+        </Typography>
+        <Typography
+          sx={{
+            fontFamily: fonts.body,
+            fontSize: 13.5,
+            fontWeight: 500,
+            color: colors.ink,
+            letterSpacing: "0.02em",
+            pt: 0.25,
+          }}
+        >
+          {INR.format(price)}
+        </Typography>
+      </Stack>
+    </Box>
   );
 }
