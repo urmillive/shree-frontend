@@ -22,9 +22,9 @@ import {
   resolveProductName,
   resolveProductPrice,
 } from "../services/publicProductsService";
-import { useCart } from "../context/CartContext";
-import { useWishlist } from "../context/WishlistContext";
-import { useRecentlyViewed } from "../context/RecentlyViewedContext";
+import { useCart } from "../context/useCart";
+import { useWishlist } from "../context/useWishlist";
+import { useRecentlyViewed } from "../context/useRecentlyViewed";
 import RecentlyViewedSection from "../components/RecentlyViewedSection";
 
 const INR = new Intl.NumberFormat("en-IN", {
@@ -149,7 +149,10 @@ export default function ProductDetail() {
   const name = useMemo(() => resolveProductName(product), [product]);
   const price = useMemo(() => resolveProductPrice(product), [product]);
   const images = useMemo(() => collectImages(product), [product]);
-  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  const variants = useMemo(
+    () => (Array.isArray(product?.variants) ? product.variants : []),
+    [product?.variants]
+  );
   const selectedVariant = useMemo(
     () =>
       variants.find(

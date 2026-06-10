@@ -1,7 +1,7 @@
 import { Box, Button, Grid, Skeleton, Stack, Typography } from "@mui/material";
 import { colors, fonts } from "../../theme/theme";
 import ProductCard from "./ProductCard";
-import { useRecentlyViewed } from "../context/RecentlyViewedContext";
+import { useRecentlyViewed } from "../context/useRecentlyViewed";
 
 const sameId = (a, b) => String(a ?? "") === String(b ?? "");
 

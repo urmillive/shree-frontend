@@ -161,7 +161,7 @@ const Profile = () => {
     if (!isEditing || !profile) return;
     setNameDraft(String(profile.name ?? ""));
     setMobileDraft(normalizeMobileDigits(profile.mobile ?? ""));
-  }, [isEditing, profile?.id]);
+  }, [isEditing, profile]);
 
   const effectiveMobile = normalizeMobileDigits(mobileDraft);
 

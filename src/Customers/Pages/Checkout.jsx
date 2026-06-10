@@ -19,7 +19,7 @@ import {
   extractAddressesFromMeResponse,
   getAddressId,
 } from "../../utils/addressesApi";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/useCart";
 import { loadRazorpayScript } from "../services/loadRazorpayScript";
 import {
   normalizeCustomerOrderPayload,

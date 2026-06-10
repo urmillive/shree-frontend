@@ -14,8 +14,8 @@ import {
 import { FiMinus, FiPlus, FiX } from "react-icons/fi";
 import { Link as RouterLink } from "react-router-dom";
 import { colors, fonts } from "../../theme/theme";
-import { useWishlist } from "../context/WishlistContext";
-import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/useWishlist";
+import { useCart } from "../context/useCart";
 
 const INR = new Intl.NumberFormat("en-IN", {
   style: "currency",

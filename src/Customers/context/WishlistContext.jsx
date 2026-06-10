@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getStoredAccessToken } from "../../Setup/Axios";
 import {
   addItemToWishlist,
@@ -8,8 +8,7 @@ import {
   normalizeWishlistPayload,
   removeWishlistItem,
 } from "../services/publicWishlistService";
-
-const WishlistContext = createContext(null);
+import { WishlistContext } from "./useWishlist";
 
 const EMPTY_WISHLIST = {
   id: "",
@@ -113,12 +112,4 @@ export function WishlistProvider({ children }) {
   );
 
   return <WishlistContext.Provider value={value}>{children}</WishlistContext.Provider>;
-}
-
-export function useWishlist() {
-  const context = useContext(WishlistContext);
-  if (!context) {
-    throw new Error("useWishlist must be used within WishlistProvider.");
-  }
-  return context;
 }

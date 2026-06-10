@@ -33,8 +33,8 @@ import {
   normalizePublicCategoryTreePayload,
 } from "../services/publicCategoriesService";
 import { colors, fonts, inkAlpha } from "../../theme/theme";
-import { useCart } from "../context/CartContext";
-import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/useCart";
+import { useWishlist } from "../context/useWishlist";
 
 const drawerWidth = 320;
 

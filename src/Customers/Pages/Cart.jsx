@@ -13,7 +13,7 @@ import {
 import { FiMinus, FiPlus, FiX } from "react-icons/fi";
 import { Link as RouterLink } from "react-router-dom";
 import { getStoredAccessToken } from "../../Setup/Axios";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/useCart";
 import { colors, fonts } from "../../theme/theme";
 
 const INR = new Intl.NumberFormat("en-IN", {

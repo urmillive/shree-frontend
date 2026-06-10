@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getStoredAccessToken } from "../../Setup/Axios";
 import {
   addItemToCart,
@@ -9,8 +9,7 @@ import {
   removeCartItem,
   updateCartItemQuantity,
 } from "../services/publicCartService";
-
-const CartContext = createContext(null);
+import { CartContext } from "./useCart";
 
 const EMPTY_CART = {
   id: "",
@@ -116,12 +115,4 @@ export function CartProvider({ children }) {
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
-}
-
-export function useCart() {
-  const context = useContext(CartContext);
-  if (!context) {
-    throw new Error("useCart must be used within CartProvider.");
-  }
-  return context;
 }

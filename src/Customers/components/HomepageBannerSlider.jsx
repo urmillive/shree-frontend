@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Box, CircularProgress, IconButton, Stack, Typography, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
@@ -23,11 +23,12 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError("");
 
-    fetchHomepageBannersByPlacement(placement)
-      .then((res) => {
+    const run = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const res = await fetchHomepageBannersByPlacement(placement);
         if (cancelled) return;
         const list = normalizeHomepageBannersPayload(res?.data).filter(
           (banner) => banner?.isActive !== false
@@ -37,8 +38,7 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
         );
         setBanners(list);
         setCurrentIndex(0);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         setError(
           err?.response?.data?.error?.message ||
@@ -47,10 +47,12 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
             "Could not load banners."
         );
         setBanners([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
@@ -64,21 +66,21 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     return banners[currentIndex] || null;
   }, [banners, currentIndex, total]);
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     if (total <= 1) return;
     setCurrentIndex((prev) => (prev + 1) % total);
-  };
+  }, [total]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (total <= 1) return;
     setCurrentIndex((prev) => (prev - 1 + total) % total);
-  };
+  }, [total]);
 
   useEffect(() => {
     if (total <= 1) return undefined;
     const timer = window.setInterval(goNext, AUTO_SLIDE_MS);
     return () => window.clearInterval(timer);
-  }, [total]);
+  }, [total, goNext]);
 
   const heroHeight = { xs: 480, sm: 600, md: 680 };
 

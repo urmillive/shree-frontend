@@ -20,7 +20,7 @@ import client, {
   setStoredUserDisplayName,
 } from "../../Setup/Axios";
 import { colors, fonts } from "../../theme/theme";
-import { useCart } from "../context/CartContext";
+import { useCart } from "../context/useCart";
 
 const eyebrowSx = {
   fontFamily: fonts.body,

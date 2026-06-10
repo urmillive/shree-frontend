@@ -1,12 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   clearRecentlyViewed as clearRecentlyViewedRequest,
   fetchRecentlyViewed,
   normalizeRecentlyViewedProducts,
   trackRecentlyViewedProduct,
 } from "../services/publicRecentlyViewedService";
-
-const RecentlyViewedContext = createContext(null);
+import { RecentlyViewedContext } from "./useRecentlyViewed";
 
 export function RecentlyViewedProvider({ children }) {
   const [products, setProducts] = useState([]);
@@ -85,12 +84,4 @@ export function RecentlyViewedProvider({ children }) {
   );
 
   return <RecentlyViewedContext.Provider value={value}>{children}</RecentlyViewedContext.Provider>;
-}
-
-export function useRecentlyViewed() {
-  const context = useContext(RecentlyViewedContext);
-  if (!context) {
-    throw new Error("useRecentlyViewed must be used within RecentlyViewedProvider.");
-  }
-  return context;
 }
