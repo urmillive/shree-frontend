@@ -3,7 +3,8 @@ import { Box } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchOrdersReport } from "../../services/analyticsService";
-import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount } from "./AnalyticsShared";
+import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell } from "./AnalyticsShared";
+import { formatCount } from "./analyticsFormatters";
 
 const OrdersAnalyticsPage = () => {
   const [from, setFrom] = useState("2024-01-01");

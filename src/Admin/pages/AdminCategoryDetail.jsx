@@ -63,6 +63,7 @@ const AdminCategoryDetail = () => {
     if (isAdminAllowed) {
       loadCategory();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, categoryId]);
 
   useEffect(() => {

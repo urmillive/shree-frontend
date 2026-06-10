@@ -21,16 +21,6 @@ import { exportRowsToCsv, exportRowsToPdf } from "../../utils/reportExport";
 
 const accent = "#ab8a48";
 
-export const formatCurrency = (value) => {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(amount);
-};
-
-export const formatCount = (value) => {
-  const amount = Number(value || 0);
-  return new Intl.NumberFormat("en-IN").format(amount);
-};
-
 export const DateFilterBar = ({ from, to, onFrom, onTo, extraControls }) => (
   <Stack direction={{ xs: "column", sm: "row" }} spacing={1.25} sx={{ mb: 2 }}>
     <TextField label="From" type="date" size="small" value={from} onChange={(e) => onFrom(e.target.value)} InputLabelProps={{ shrink: true }} />

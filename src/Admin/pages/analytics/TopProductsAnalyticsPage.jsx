@@ -3,7 +3,8 @@ import { Box, TextField } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchTopProductsReport } from "../../services/analyticsService";
-import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCurrency, formatCount } from "./AnalyticsShared";
+import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell } from "./AnalyticsShared";
+import { formatCurrency, formatCount } from "./analyticsFormatters";
 
 const TopProductsAnalyticsPage = () => {
   const [from, setFrom] = useState("2024-01-01");

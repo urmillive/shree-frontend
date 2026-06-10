@@ -100,6 +100,7 @@ const AdminCategoryGridSectionEdit = () => {
 
   useEffect(() => {
     if (isAdminAllowed) loadSection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, sectionId]);
 
   useEffect(() => {
@@ -190,6 +191,9 @@ const AdminCategoryGridSectionEdit = () => {
     });
   };
 
+  const existingCategoryIds = useMemo(() => (Array.isArray(section?.categoryIds) ? section.categoryIds.map((id) => String(id)) : []), [section]);
+  const existingCategorySet = useMemo(() => new Set(existingCategoryIds), [existingCategoryIds]);
+
   if (!isAdminAllowed) {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 2, bgcolor: pageBg }}>
@@ -199,8 +203,6 @@ const AdminCategoryGridSectionEdit = () => {
   }
 
   const isCorrectType = section?.type === "category_grid";
-  const existingCategoryIds = useMemo(() => (Array.isArray(section?.categoryIds) ? section.categoryIds.map((id) => String(id)) : []), [section]);
-  const existingCategorySet = useMemo(() => new Set(existingCategoryIds), [existingCategoryIds]);
   const activeCategoryIds = existingCategoryIds.filter((id) => !markedForRemoval.includes(id));
   const availableOptions = categoryOptions.filter((category) => !existingCategorySet.has(getCategoryId(category)));
 

@@ -3,7 +3,8 @@ import { Box } from "@mui/material";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchRevenueReport } from "../../services/analyticsService";
-import { AnalyticsTable, DateFilterBar, ExportButtons, GroupByControl, ReportShell, formatCurrency, formatCount } from "./AnalyticsShared";
+import { AnalyticsTable, DateFilterBar, ExportButtons, GroupByControl, ReportShell } from "./AnalyticsShared";
+import { formatCurrency, formatCount } from "./analyticsFormatters";
 
 const RevenueAnalyticsPage = () => {
   const [from, setFrom] = useState("2024-01-01");

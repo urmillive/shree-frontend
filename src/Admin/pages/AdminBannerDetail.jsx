@@ -66,6 +66,8 @@ const AdminBannerDetail = () => {
     if (isAdminAllowed) {
       loadBanner();
     }
+    // loadBanner is recreated each render but only needs to fire on id/role change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, bannerId]);
 
   const handleSoftDelete = async () => {
@@ -93,8 +95,6 @@ const AdminBannerDetail = () => {
     );
   }
 
-  const desktopImageKey = banner?.desktopImageKey || banner?.imageKey || "";
-  const mobileImageKey = banner?.mobileImageKey || banner?.mobileImage?.key || "";
   const desktopImageUrl = banner?.desktopImageUrl || banner?.imageUrl || banner?.image?.url || "";
   const mobileImageUrl = banner?.mobileImageUrl || banner?.mobileImage?.url || "";
   const bannerFields = [

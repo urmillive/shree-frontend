@@ -23,6 +23,8 @@ const pageBg = "#ffffff";
 
 const STATUS_OPTIONS = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "returned"];
 
+const COMPLEX_KEYS = new Set(["items", "statusHistory", "shippingAddress", "pricing"]);
+
 function normalizeOrderPayload(payload) {
   if (payload == null) return null;
   const root = payload?.data !== undefined ? payload.data : payload;
@@ -122,8 +124,6 @@ const AdminOrderDetail = () => {
       cancelled = true;
     };
   }, [orderNumber]);
-
-  const COMPLEX_KEYS = new Set(["items", "statusHistory", "shippingAddress", "pricing"]);
 
   const orderEntries = useMemo(() => {
     const entries = Object.entries(order || {}).filter(([k]) => k !== "__v" && !COMPLEX_KEYS.has(k));

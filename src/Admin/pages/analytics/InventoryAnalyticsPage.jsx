@@ -4,7 +4,8 @@ import { alpha } from "@mui/material/styles";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchInventoryReport } from "../../services/analyticsService";
-import { ExportButtons, ReportShell, formatCount, formatCurrency } from "./AnalyticsShared";
+import { ExportButtons, ReportShell } from "./AnalyticsShared";
+import { formatCount, formatCurrency } from "./analyticsFormatters";
 
 const InventoryAnalyticsPage = () => {
   const [data, setData] = useState(null);

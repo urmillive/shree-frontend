@@ -77,6 +77,7 @@ const AdminProductListSectionEdit = () => {
 
   useEffect(() => {
     if (isAdminAllowed) loadSection();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, sectionId]);
 
   useEffect(() => {
@@ -165,6 +166,9 @@ const AdminProductListSectionEdit = () => {
     });
   };
 
+  const existingProductIds = useMemo(() => (Array.isArray(section?.productIds) ? section.productIds.map((id) => String(id)) : []), [section]);
+  const existingProductSet = useMemo(() => new Set(existingProductIds), [existingProductIds]);
+
   if (!isAdminAllowed) {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 2, bgcolor: pageBg }}>
@@ -174,8 +178,6 @@ const AdminProductListSectionEdit = () => {
   }
 
   const isCorrectType = section?.type === "product_list";
-  const existingProductIds = useMemo(() => (Array.isArray(section?.productIds) ? section.productIds.map((id) => String(id)) : []), [section]);
-  const existingProductSet = useMemo(() => new Set(existingProductIds), [existingProductIds]);
   const activeProductIds = existingProductIds.filter((id) => !markedForRemoval.includes(id));
   const availableOptions = productOptions.filter((product) => !existingProductSet.has(getProductId(product)));
 

@@ -116,6 +116,7 @@ const AdminBannerImages = () => {
     if (isAdminAllowed) {
       loadBanner();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, bannerId]);
 
   const uploadAndConfirm = async ({ file, isMobile }) => {

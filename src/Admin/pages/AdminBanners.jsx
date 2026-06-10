@@ -72,6 +72,12 @@ const AdminBanners = () => {
 
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
+  useEffect(() => {
+    if (!placementFromQuery) return;
+    if (!PLACEMENT_OPTIONS.some((option) => option.value === placementFromQuery)) return;
+    setBannerForm(getInitialFormByPlacement(placementFromQuery));
+  }, [placementFromQuery]);
+
   if (!isAdminAllowed) {
     return (
       <Box sx={{ minHeight: "100dvh", display: "grid", placeItems: "center", p: 2, bgcolor: pageBg }}>
@@ -90,12 +96,6 @@ const AdminBanners = () => {
   const setSuccess = (message) => {
     setFeedback({ type: "success", message });
   };
-
-  useEffect(() => {
-    if (!placementFromQuery) return;
-    if (!PLACEMENT_OPTIONS.some((option) => option.value === placementFromQuery)) return;
-    setBannerForm(getInitialFormByPlacement(placementFromQuery));
-  }, [placementFromQuery]);
 
   const handleCreateBanner = async (event) => {
     event.preventDefault();

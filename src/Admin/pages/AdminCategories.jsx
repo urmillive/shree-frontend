@@ -20,7 +20,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
 import AdminNavbar from "../components/AdminNavbar";
-import { fetchAdminCategories, flattenCategories, normalizeCategoryListPayload } from "../services/adminCategoriesService";
+import { fetchAdminCategories, flattenCategories } from "../services/adminCategoriesService";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
@@ -34,7 +34,6 @@ const AdminCategories = () => {
 
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
-  const [categoriesTree, setCategoriesTree] = useState([]);
   const [categoriesFlat, setCategoriesFlat] = useState([]);
   const [searchInput, setSearchInput] = useState("");
 
@@ -43,7 +42,6 @@ const AdminCategories = () => {
     setFeedback({ type: "", message: "" });
     try {
       const { data } = await fetchAdminCategories();
-      setCategoriesTree(normalizeCategoryListPayload(data));
       setCategoriesFlat(flattenCategories(data));
     } catch (error) {
       setFeedback({

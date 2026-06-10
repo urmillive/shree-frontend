@@ -60,6 +60,7 @@ const AdminCategoryEdit = () => {
 
   useEffect(() => {
     if (isAdminAllowed) loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, categoryId]);
 
   const handleUpdate = async () => {

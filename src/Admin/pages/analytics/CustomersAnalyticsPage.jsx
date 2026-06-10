@@ -4,7 +4,8 @@ import { alpha } from "@mui/material/styles";
 import AdminBreadcrumb from "../../components/AdminBreadcrumb";
 import AdminNavbar from "../../components/AdminNavbar";
 import { fetchCustomersReport } from "../../services/analyticsService";
-import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell, formatCount, formatCurrency } from "./AnalyticsShared";
+import { AnalyticsTable, DateFilterBar, ExportButtons, ReportShell } from "./AnalyticsShared";
+import { formatCount, formatCurrency } from "./analyticsFormatters";
 
 const CustomersAnalyticsPage = () => {
   const [from, setFrom] = useState("2024-01-01");
