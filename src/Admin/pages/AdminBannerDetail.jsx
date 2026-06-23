@@ -122,8 +122,34 @@ const AdminBannerDetail = () => {
       setError("Missing banner id.");
       return;
     }
-    // loadBanner is recreated each render but only needs to fire on id/role change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    let cancelled = false;
+
+    const loadBanner = async () => {
+      setLoading(true);
+      setError("");
+      setBanner(null);
+      try {
+        const { data } = await client.get(`/admin/banners/${encodeURIComponent(bannerId.trim())}`);
+        if (cancelled) return;
+        const normalized = normalizeBannerPayload(data);
+        if (!normalized || typeof normalized !== "object") {
+          setError("Unexpected response from server.");
+          return;
+        }
+        setBanner(normalized);
+      } catch (e) {
+        if (cancelled) return;
+        setError(getApiErrorMessage(e, "Failed to load banner."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadBanner();
+    return () => {
+      cancelled = true;
+    };
   }, [isAdminAllowed, bannerId]);
 
   useEffect(() => {
