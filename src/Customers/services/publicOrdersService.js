@@ -34,6 +34,11 @@ export function normalizeCustomerOrdersListPayload(payload) {
     }
   }
 
+  const metaTotal = payload?.meta?.total;
+  if (metaTotal != null && Number.isFinite(Number(metaTotal))) {
+    total = Number(metaTotal);
+  }
+
   return { items, total };
 }
 

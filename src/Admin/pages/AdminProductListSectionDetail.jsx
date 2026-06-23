@@ -1,19 +1,98 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Box, Button, Paper, Stack, Typography } from "@mui/material";
+import {
+  Alert,
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  Grid,
+  Link,
+  Paper,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Tabs,
+  Typography,
+} from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
+const forest = "#0f3828";
 
-const normalizeSection = (payload) => {
-  const root = payload?.data ?? payload;
-  if (!root || typeof root !== "object") return null;
-  return root.section ?? root;
+const DETAIL_SKIP_KEYS = new Set(["productIds", "categoryIds", "__v"]);
+
+const FIELD_LABEL_OVERRIDES = {
+  _id: "ID",
+  displayOrder: "Display Order",
+  isActive: "Is Active",
+  createdAt: "Created",
+  updatedAt: "Updated",
 };
+
+function pickSectionId(section) {
+  if (!section) return "";
+  return String(section._id ?? section.id ?? "").trim();
+}
+
+function normalizeSectionPayload(payload) {
+  if (payload == null) return null;
+  const root = payload?.data !== undefined ? payload.data : payload;
+  if (root && typeof root === "object" && !Array.isArray(root)) {
+    return root.section ?? root;
+  }
+  return root;
+}
+
+function normalizeProductPayload(payload) {
+  if (payload == null) return null;
+  const root = payload?.data !== undefined ? payload.data : payload;
+  if (root && typeof root === "object" && !Array.isArray(root)) {
+    return root.product ?? root;
+  }
+  return root;
+}
+
+function formatFieldLabel(key) {
+  if (FIELD_LABEL_OVERRIDES[key]) return FIELD_LABEL_OVERRIDES[key];
+  return key.replace(/([A-Z])/g, " $1").trim();
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
+function formatFieldValue(key, v) {
+  if (key === "createdAt" || key === "updatedAt") return formatDateTime(v);
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (v != null && typeof v === "object") return JSON.stringify(v, null, 2);
+  return String(v ?? "—");
+}
+
+function getProductId(product) {
+  return String(product?._id ?? product?.id ?? "").trim();
+}
+
+function getProductDisplayName(product) {
+  const name = String(product?.name || product?.title || "").trim();
+  const sku = String(product?.sku || "").trim();
+  if (name && sku) return `${name} (${sku})`;
+  if (name) return name;
+  if (sku) return `SKU: ${sku}`;
+  return getProductId(product) || "—";
+}
 
 const AdminProductListSectionDetail = () => {
   const navigate = useNavigate();
@@ -21,52 +100,130 @@ const AdminProductListSectionDetail = () => {
   const roleGate = localStorage.getItem("role");
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
-  const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [section, setSection] = useState(null);
+  const [linkedProducts, setLinkedProducts] = useState([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [activeTab, setActiveTab] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
-  const loadSection = async () => {
-    if (!sectionId.trim()) return;
-    setLoading(true);
-    setFeedback({ type: "", message: "" });
-    try {
-      const { data } = await client.get(`/admin/sections/${encodeURIComponent(sectionId.trim())}`);
-      const fetched = normalizeSection(data);
-      setSection(fetched);
-    } catch (error) {
-      setFeedback({
-        type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load section.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    if (isAdminAllowed) {
-      loadSection();
+    if (!isAdminAllowed) return;
+    if (!sectionId.trim()) {
+      setLoading(false);
+      setError("Missing section id.");
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    let cancelled = false;
+
+    const load = async () => {
+      setLoading(true);
+      setError("");
+      setFeedback({ type: "", message: "" });
+      setSection(null);
+      setLinkedProducts([]);
+      try {
+        const { data } = await client.get(`/admin/sections/${encodeURIComponent(sectionId.trim())}`);
+        if (cancelled) return;
+        const fetched = normalizeSectionPayload(data);
+        if (!fetched || typeof fetched !== "object") {
+          setSection(null);
+          setError("Unexpected response from server.");
+          return;
+        }
+        if (fetched.type !== "product_list") {
+          setSection(null);
+          setError("This section is not a product_list section.");
+          return;
+        }
+        setSection(fetched);
+      } catch (e) {
+        if (cancelled) return;
+        setSection(null);
+        setError(getApiErrorMessage(e, "Failed to load section."));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [isAdminAllowed, sectionId]);
 
-  const handleSoftDelete = async () => {
-    if (!window.confirm("Delete this section?")) return;
+  useEffect(() => {
+    setActiveTab(0);
+  }, [sectionId]);
+
+  const productIds = useMemo(
+    () => (Array.isArray(section?.productIds) ? section.productIds.map((id) => String(id).trim()).filter(Boolean) : []),
+    [section],
+  );
+
+  useEffect(() => {
+    if (!productIds.length) {
+      setLinkedProducts([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProducts = async () => {
+      setLoadingProducts(true);
+      try {
+        const results = await Promise.all(
+          productIds.map(async (id) => {
+            try {
+              const { data } = await client.get(`/admin/products/${encodeURIComponent(id)}`);
+              return normalizeProductPayload(data);
+            } catch {
+              return { _id: id, id };
+            }
+          }),
+        );
+        if (!cancelled) {
+          setLinkedProducts(results.filter((item) => item && typeof item === "object"));
+        }
+      } finally {
+        if (!cancelled) setLoadingProducts(false);
+      }
+    };
+
+    loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, [productIds]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Soft-delete this section?")) return;
     setDeleting(true);
     setFeedback({ type: "", message: "" });
     try {
       await client.delete(`/admin/sections/${encodeURIComponent(sectionId.trim())}`);
       navigate("/admin/homepage-cms/product-list-sections");
-    } catch (error) {
+    } catch (e) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to delete section.",
+        message: getApiErrorMessage(e, "Failed to delete section."),
       });
     } finally {
       setDeleting(false);
     }
   };
+
+  const { leftEntries, rightEntries } = useMemo(() => {
+    const entries = Object.entries(section || {}).filter(([k]) => !DETAIL_SKIP_KEYS.has(k));
+    const mid = Math.ceil(entries.length / 2);
+    return {
+      leftEntries: entries.slice(0, mid),
+      rightEntries: entries.slice(mid),
+    };
+  }, [section]);
 
   if (!isAdminAllowed) {
     return (
@@ -79,54 +236,32 @@ const AdminProductListSectionDetail = () => {
     );
   }
 
-  const productIds = Array.isArray(section?.productIds) ? section.productIds : [];
-  const isCorrectType = section?.type === "product_list";
-  const sectionFields = [
-    { label: "ID", value: section?._id || section?.id || "-" },
-    { label: "Title", value: section?.title || "-" },
-    { label: "Subtitle", value: section?.subtitle || "-" },
-    { label: "Type", value: section?.type || "-" },
-    { label: "Display Order", value: section?.displayOrder ?? 0 },
-    { label: "Is Active", value: section?.isActive ? "Yes" : "No" },
-    { label: "Products", value: productIds.length },
-    { label: "Created At", value: section?.createdAt ? new Date(section.createdAt).toLocaleString() : "-" },
-    { label: "Updated At", value: section?.updatedAt ? new Date(section.updatedAt).toLocaleString() : "-" },
-  ];
-  const mid = Math.ceil(sectionFields.length / 2);
-  const leftEntries = sectionFields.slice(0, mid);
-  const rightEntries = sectionFields.slice(mid);
+  const id = pickSectionId(section);
+  const displayTitle = String(section?.title || "Product List Section");
+  const statusLabel = section?.isActive ? "Active" : "Inactive";
+  const typeLabel = section?.type ? String(section.type) : "—";
+  const productCount = productIds.length;
+
+  const cardSx = {
+    p: { xs: 2, sm: 3 },
+    borderRadius: 2,
+    border: `1px solid ${alpha(forest, 0.1)}`,
+    boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)",
+  };
 
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
-      <Box sx={{ maxWidth: 1120, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
+
+      <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
         <AdminBreadcrumb
           items={[
             { label: "Dashboard", to: "/admin/dashboard" },
             { label: "Homepage CMS", to: "/admin/homepage-cms" },
             { label: "Product List Sections", to: "/admin/homepage-cms/product-list-sections" },
-            { label: "Section Detail" },
+            { label: loading ? "Section" : displayTitle },
           ]}
         />
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 2 }}>
-          <Typography variant="h5" sx={{ color: "#19271f", fontWeight: 800 }}>
-            Product List Section Detail
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            <Button variant="text" sx={{ textTransform: "none", fontWeight: 700, color: "#2a4135" }} onClick={() => navigate("/admin/homepage-cms/product-list-sections")}>
-              Back to list
-            </Button>
-            <Button variant="outlined" sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }} onClick={loadSection}>
-              Refresh
-            </Button>
-            <Button variant="outlined" color="error" disabled={deleting} sx={{ textTransform: "none", fontWeight: 700 }} onClick={handleSoftDelete}>
-              {deleting ? "Deleting..." : "Delete"}
-            </Button>
-            <Button variant="contained" sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }} onClick={() => navigate(`/admin/homepage-cms/product-list-sections/${encodeURIComponent(sectionId)}/edit`)}>
-              Edit Section
-            </Button>
-          </Stack>
-        </Stack>
 
         {feedback.message ? (
           <Alert severity={feedback.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
@@ -135,73 +270,226 @@ const AdminProductListSectionDetail = () => {
         ) : null}
 
         {loading ? (
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-            <Typography color="text.secondary">Loading section...</Typography>
-          </Paper>
-        ) : !section ? (
-          <Alert severity="error">No section data found.</Alert>
-        ) : !isCorrectType ? (
-          <Alert severity="error">This section is not a product_list section.</Alert>
-        ) : (
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, sm: 3 },
-              borderRadius: 2,
-              border: `1px solid ${alpha("#0f3828", 0.1)}`,
-              boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)",
-            }}
-          >
+          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+            <CircularProgress size={32} sx={{ color: accent }} />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
+        ) : section ? (
+          <Paper elevation={0} sx={cardSx}>
             <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
               Product List Section
             </Typography>
-            <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", mb: 2, wordBreak: "break-word" }}>
-              {String(section?.title || "Section Detail")}
+            <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", wordBreak: "break-word" }}>
+              {displayTitle}
             </Typography>
-            <Typography sx={{ color: "#6f7f77", fontWeight: 600, mb: 2 }}>
-              Status: {section?.isActive ? "Active" : "Inactive"} | Type: {String(section?.type || "-")}
-            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ sm: "center" }}
+              spacing={1.5}
+              sx={{ mt: 0.5 }}
+            >
+              <Typography sx={{ color: "#6f7f77", fontWeight: 600, fontSize: 13 }}>
+                Status: {statusLabel} | Type: {typeLabel} | Products: {productCount}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() =>
+                  id && navigate(`/admin/homepage-cms/product-list-sections/${encodeURIComponent(id)}/edit`)
+                }
+                disabled={!id}
+                sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+              >
+                Edit Section
+              </Button>
+            </Stack>
 
-            <Box
+            <Tabs
+              value={activeTab}
+              onChange={(_, next) => setActiveTab(next)}
               sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-                gap: 2,
-                mb: 2,
+                mt: 2,
+                mb: 0,
+                minHeight: 44,
+                borderBottom: `1px solid ${alpha(forest, 0.1)}`,
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  minHeight: 44,
+                  color: "#6f7f77",
+                },
+                "& .Mui-selected": { color: "#19271f" },
+                "& .MuiTabs-indicator": { bgcolor: accent, height: 3, borderRadius: "3px 3px 0 0" },
               }}
             >
-              <Stack spacing={1.25}>
-                {leftEntries.map((field) => (
-                  <Box key={field.label}>
-                    <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                      {field.label}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word" }}>
-                      {String(field.value ?? "-")}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-              <Stack spacing={1.25}>
-                {rightEntries.map((field) => (
-                  <Box key={field.label}>
-                    <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                      {field.label}
-                    </Typography>
-                    <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word" }}>
-                      {String(field.value ?? "-")}
-                    </Typography>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
+              <Tab label="Details" />
+              <Tab label={productCount ? `Products (${productCount})` : "Products (none)"} />
+            </Tabs>
 
-            <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1 }}>Product IDs</Typography>
-            <Box component="pre" sx={{ m: 0, p: 1.25, borderRadius: 1.2, bgcolor: alpha("#0f3828", 0.04), fontSize: 12, maxHeight: 240, overflow: "auto" }}>
-              {JSON.stringify(productIds, null, 2)}
-            </Box>
+            <Divider sx={{ mb: 2 }} />
+
+            {activeTab === 0 ? (
+              <>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={1.25}>
+                      {leftEntries.map(([k, v]) => (
+                        <Box key={k}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                          >
+                            {formatFieldLabel(k)}
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                            {formatFieldValue(k, v)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <Stack spacing={1.25}>
+                      {rightEntries.map(([k, v]) => (
+                        <Box key={k}>
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                          >
+                            {formatFieldLabel(k)}
+                          </Typography>
+                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                            {formatFieldValue(k, v)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </Grid>
+                </Grid>
+
+                <Box
+                  sx={{
+                    mt: 2.5,
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: alpha(forest, 0.03),
+                    border: `1px solid ${alpha(forest, 0.1)}`,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6, display: "block", mb: 1 }}
+                  >
+                    Subtitle
+                  </Typography>
+                  <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                    {section.subtitle?.trim() ? String(section.subtitle) : "—"}
+                  </Typography>
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ overflow: "auto" }}>
+                {loadingProducts ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                    <CircularProgress size={28} sx={{ color: accent }} />
+                  </Box>
+                ) : productCount === 0 ? (
+                  <Box
+                    sx={{
+                      py: 4,
+                      px: 2,
+                      borderRadius: 2,
+                      bgcolor: alpha(forest, 0.03),
+                      border: `1px dashed ${alpha(forest, 0.15)}`,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, color: "#19271f", mb: 0.5 }}>No products</Typography>
+                    <Typography variant="body2" sx={{ color: "#6f7f77", mb: 2 }}>
+                      Add products to this section from Edit Section.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() =>
+                        id && navigate(`/admin/homepage-cms/product-list-sections/${encodeURIComponent(id)}/edit`)
+                      }
+                      disabled={!id}
+                      sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+                    >
+                      Edit Section
+                    </Button>
+                  </Box>
+                ) : (
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: alpha(accent, 0.08) }}>
+                        <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Product</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>SKU</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }} align="right">
+                          Actions
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {productIds.map((pid, index) => {
+                        const product = linkedProducts.find((item) => getProductId(item) === pid);
+                        const productId = getProductId(product) || pid;
+                        const hasDetails = Boolean(product?.name || product?.sku || product?.status);
+                        return (
+                          <TableRow key={pid}>
+                            <TableCell>{index + 1}</TableCell>
+                            <TableCell sx={{ maxWidth: 280, wordBreak: "break-word" }}>
+                              {hasDetails ? getProductDisplayName(product) : pid}
+                            </TableCell>
+                            <TableCell>{product?.sku ? String(product.sku) : "—"}</TableCell>
+                            <TableCell>{product?.status ? String(product.status) : "—"}</TableCell>
+                            <TableCell align="right">
+                              {productId ? (
+                                <Link
+                                  component="button"
+                                  type="button"
+                                  variant="body2"
+                                  onClick={() => navigate(`/admin/products/${encodeURIComponent(productId)}`)}
+                                  sx={{ color: accent, fontWeight: 700, textTransform: "none" }}
+                                >
+                                  View product
+                                </Link>
+                              ) : (
+                                "—"
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </Box>
+            )}
+
+            <Divider sx={{ mt: 3, mb: 2 }} />
+
+            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap spacing={1}>
+              <Typography variant="caption" sx={{ color: "#8a9690", fontWeight: 600 }}>
+                ID: {id || "—"}
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDelete}
+                disabled={deleting}
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                {deleting ? "Deleting…" : "Soft Delete"}
+              </Button>
+            </Stack>
           </Paper>
-        )}
+        ) : null}
       </Box>
     </Box>
   );

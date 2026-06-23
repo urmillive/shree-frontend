@@ -2,6 +2,42 @@ import client from "../../Setup/Axios";
 
 const getCategoryId = (category) => String(category?._id || category?.id || "").trim();
 
+export const getAncestorId = (ancestor) => String(ancestor?._id || ancestor?.id || "").trim();
+
+/** Ordered root → … → direct parent from API `ancestors` array. */
+export const normalizeCategoryAncestors = (category) => {
+  const raw = category?.ancestors;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((item) => ({
+      id: getAncestorId(item),
+      name: String(item?.name || "").trim() || "Unnamed",
+      slug: String(item?.slug || "").trim(),
+    }))
+    .filter((item) => item.id || item.name);
+};
+
+export const getCategoryParentId = (category) => {
+  const parent = category?.parent;
+  if (parent == null || parent === "") return "";
+  if (typeof parent === "object") return getCategoryId(parent);
+  return String(parent).trim();
+};
+
+/** Max depth: Level 1 (root) → Level 2 → Level 3. API `level` is 0-based. */
+export const MAX_CATEGORY_DEPTH = 3;
+
+export const getCategoryLevel = (category) => {
+  const fromApi = Number(category?.level);
+  if (Number.isFinite(fromApi) && fromApi >= 0) return fromApi;
+  const path = String(category?._uiPathLabel || "").trim();
+  if (!path) return 0;
+  return Math.max(0, (path.match(/ > /g) || []).length);
+};
+
+/** Categories that can be a parent when creating or moving a child (levels 1–2 only). */
+export const canBeParentCategory = (category) => getCategoryLevel(category) < MAX_CATEGORY_DEPTH - 1;
+
 const normalizeCategoryTree = (nodes, parentPath = "") => {
   if (!Array.isArray(nodes)) return [];
   return nodes.flatMap((node) => {

@@ -3,6 +3,7 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
+  alpha,
   AppBar,
   Badge,
   Box,
@@ -12,7 +13,10 @@ import {
   IconButton,
   List,
   ListItemButton,
+  ListItemIcon,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   Toolbar,
   Typography,
@@ -499,6 +503,38 @@ const CustomerNavbar = () => {
             Categories will appear here soon.
           </Typography>
         )}
+        <Accordion
+          disableGutters
+          elevation={0}
+          defaultExpanded
+          sx={{
+            bgcolor: "transparent",
+            boxShadow: "none",
+            "&::before": { display: "none" },
+          }}
+        >
+          <AccordionSummary
+            expandIcon={<MdExpandMore size={20} />}
+            sx={{
+              px: 0.25,
+              minHeight: 44,
+              "& .MuiAccordionSummary-content": { my: 0.5 },
+            }}
+          >
+            <Typography sx={{ fontWeight: 700, fontSize: 14, color: alpha(colors.text, 0.85) }}>
+              Categories
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0, pb: 0.5, px: 0 }}>
+            {categoryTree.length > 0 ? (
+              <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
+            ) : (
+              <Typography sx={{ fontSize: 13, color: alpha(colors.text, 0.55), py: 0.6 }}>
+                Categories will appear here soon.
+              </Typography>
+            )}
+          </AccordionDetails>
+        </Accordion>
       </Box>
 
       {loggedIn && displayName ? (
@@ -637,6 +673,7 @@ const CustomerNavbar = () => {
       >
         {drawer}
       </Drawer>
+
     </>
   );
 };

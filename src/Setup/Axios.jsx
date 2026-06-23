@@ -1,4 +1,11 @@
 import axios from "axios";
+import {
+  createApiErrorFromResponse,
+  getApiErrorMessage,
+  getApiSuccessMessage,
+  isApiFailureEnvelope,
+} from "../utils/apiError";
+import { showApiErrorToast, showApiSuccessToast } from "../utils/errorToastBridge";
 
 const LEGACY_ACCESS_TOKEN_KEY = "accessToken";
 const CUSTOMER_ACCESS_TOKEN_KEY = "access_token";
@@ -6,6 +13,11 @@ const ADMIN_ACCESS_TOKEN_KEY = "admin_token";
 const ROLE_KEY = "role";
 const USER_DISPLAY_NAME_KEY = "user_display_name";
 const AUTH_LOGIN_PATH = "/login";
+export const AUTH_SESSION_CHANGED_EVENT = "shree:auth-session-changed";
+
+const notifyAuthSessionChanged = () => {
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED_EVENT));
+};
 
 const extractAccessToken = (payload) =>{
   return payload?.data?.accessToken || payload?.accessToken || null;
@@ -41,10 +53,14 @@ export const getStoredAccessToken = () =>
   localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY) ||
   localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
 
+export const getStoredCustomerAccessToken = () =>
+  localStorage.getItem(CUSTOMER_ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY);
+
 export const setStoredAccessToken = (token) => {
   if (token) {
     localStorage.setItem(CUSTOMER_ACCESS_TOKEN_KEY, token);
     localStorage.setItem(LEGACY_ACCESS_TOKEN_KEY, token);
+    notifyAuthSessionChanged();
   }
 };
 
@@ -60,6 +76,7 @@ export const clearStoredAccessToken = () => {
   localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
   clearStoredRole();
   clearStoredUserDisplayName();
+  notifyAuthSessionChanged();
 };
 
 const redirectToLogin = () => {
@@ -105,6 +122,79 @@ export const refreshAccessToken = async () => {
   return refreshPromise;
 };
 
+/** Auth calls: pages usually show inline status; keep global toasts off. */
+const AUTH_API_PATH_FRAGMENTS_SILENT_TOASTS = [
+  "/auth/login",
+  "/auth/register",
+  "/auth/verify-email",
+  "/auth/resend-email-otp",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/refresh",
+  "/auth/logout",
+];
+
+const MUTATING_METHODS = new Set(["post", "put", "patch", "delete"]);
+
+const shouldSkipErrorToast = (config) => {
+  if (!config) {
+    return false;
+  }
+  if (config.skipErrorToast) {
+    return true;
+  }
+  const url = String(config.url || "");
+  return AUTH_API_PATH_FRAGMENTS_SILENT_TOASTS.some((path) => url.includes(path));
+};
+
+const shouldSkipSuccessToast = (config) => {
+  if (!config) {
+    return true;
+  }
+  if (config.skipSuccessToast) {
+    return true;
+  }
+  const rt = String(config.responseType || "").toLowerCase();
+  if (rt && rt !== "json") {
+    return true;
+  }
+  const url = String(config.url || "");
+  if (AUTH_API_PATH_FRAGMENTS_SILENT_TOASTS.some((path) => url.includes(path))) {
+    return true;
+  }
+  const method = (config.method || "get").toLowerCase();
+  if (!MUTATING_METHODS.has(method) && !config.showSuccessToast) {
+    return true;
+  }
+  return false;
+};
+
+const notifyApiError = (error, config) => {
+  if (shouldSkipErrorToast(config)) {
+    return;
+  }
+  const status = error?.response?.status;
+  if (status === 401) {
+    return;
+  }
+  showApiErrorToast(getApiErrorMessage(error));
+};
+
+const notifyApiSuccess = (response) => {
+  if (shouldSkipSuccessToast(response?.config)) {
+    return;
+  }
+  const data = response?.data;
+  if (data == null || typeof data !== "object") {
+    return;
+  }
+  const message = getApiSuccessMessage(data);
+  if (!message) {
+    return;
+  }
+  showApiSuccessToast(message);
+};
+
 const client = axios.create({
   baseURL: "/api",
   withCredentials: true,
@@ -126,7 +216,16 @@ client.interceptors.request.use((config) => {
 });
 
 client.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const data = response?.data;
+    if (data && typeof data === "object" && isApiFailureEnvelope(data)) {
+      const apiError = createApiErrorFromResponse(response);
+      notifyApiError(apiError, response.config);
+      return Promise.reject(apiError);
+    }
+    notifyApiSuccess(response);
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
     const status = error.response?.status;
@@ -153,6 +252,7 @@ client.interceptors.response.use(
         redirectToLogin();
       }
 
+      notifyApiError(error, originalRequest);
       return Promise.reject(error);
     }
 
@@ -167,6 +267,7 @@ client.interceptors.response.use(
     } catch (refreshError) {
       clearStoredAccessToken();
       redirectToLogin();
+      notifyApiError(refreshError, originalRequest);
       return Promise.reject(refreshError);
     }
   }

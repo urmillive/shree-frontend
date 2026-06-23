@@ -3,86 +3,168 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Divider,
   Grid,
+  Link,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
 const accent = "#ab8a48";
+const forest = "#0f3828";
 
-const normalizeBannerPayload = (payload) => {
+const DETAIL_SKIP_KEYS = new Set([
+  "desktopImageKey",
+  "mobileImageKey",
+  "desktopImageUrl",
+  "mobileImageUrl",
+  "imageKey",
+  "imageUrl",
+  "image",
+  "mobileImage",
+  "__v",
+]);
+
+const FIELD_LABEL_OVERRIDES = {
+  _id: "ID",
+  ctaText: "CTA Text",
+  ctaUrl: "CTA URL",
+  displayOrder: "Display Order",
+  isActive: "Is Active",
+  createdAt: "Created",
+  updatedAt: "Updated",
+  startsAt: "Starts At",
+  endsAt: "Ends At",
+  createdBy: "Created By",
+};
+
+function pickBannerId(banner) {
+  if (!banner) return "";
+  return String(banner._id ?? banner.id ?? "").trim();
+}
+
+function normalizeBannerPayload(payload) {
   if (payload == null) return null;
   const root = payload?.data !== undefined ? payload.data : payload;
   if (root && typeof root === "object" && !Array.isArray(root)) {
     return root.banner ?? root;
   }
-  return null;
-};
+  return root;
+}
+
+function normalizeBannerImages(banner) {
+  if (!banner || typeof banner !== "object") return [];
+  const images = [];
+  const desktopUrl = String(banner.desktopImageUrl || banner.imageUrl || banner.image?.url || "").trim();
+  const desktopKey = String(banner.desktopImageKey || banner.imageKey || banner.image?.key || "").trim();
+  const mobileUrl = String(banner.mobileImageUrl || banner.mobileImage?.url || "").trim();
+  const mobileKey = String(banner.mobileImageKey || banner.mobileImage?.key || "").trim();
+
+  if (desktopUrl || desktopKey) {
+    images.push({ label: "Desktop", key: desktopKey, url: desktopUrl });
+  }
+  if (mobileUrl || mobileKey) {
+    images.push({ label: "Mobile", key: mobileKey, url: mobileUrl });
+  }
+  return images;
+}
+
+function formatFieldLabel(key) {
+  if (FIELD_LABEL_OVERRIDES[key]) return FIELD_LABEL_OVERRIDES[key];
+  return key.replace(/([A-Z])/g, " $1").trim();
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString();
+}
+
+function formatFieldValue(key, v) {
+  if (key === "createdAt" || key === "updatedAt" || key === "startsAt" || key === "endsAt") {
+    return formatDateTime(v);
+  }
+  if (typeof v === "boolean") return v ? "Yes" : "No";
+  if (v != null && typeof v === "object") return JSON.stringify(v, null, 2);
+  return String(v ?? "—");
+}
 
 const AdminBannerDetail = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { bannerId = "" } = useParams();
   const roleGate = localStorage.getItem("role");
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
-  const [loading, setLoading] = useState(true);
-  const [loadingDelete, setLoadingDelete] = useState(false);
-  const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [banner, setBanner] = useState(null);
-
-  const setError = (message) => setFeedback({ type: "error", message: message || "Something went wrong." });
-  const openImageInNewTab = (url) => {
-    if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
-
-  const loadBanner = async () => {
-    if (!bannerId.trim()) return;
-    setLoading(true);
-    setFeedback({ type: "", message: "" });
-    try {
-      const { data } = await client.get(`/admin/banners/${encodeURIComponent(bannerId.trim())}`);
-      const fetchedBanner = normalizeBannerPayload(data);
-      setBanner(fetchedBanner);
-      if (!fetchedBanner || typeof fetchedBanner !== "object") {
-        setError("Unexpected response from server.");
-      }
-    } catch (error) {
-      setError(error?.response?.data?.message || error?.message || "Failed to load banner.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const [activeTab, setActiveTab] = useState(0);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (isAdminAllowed) {
-      loadBanner();
+    if (!isAdminAllowed) return;
+    if (!bannerId.trim()) {
+      setLoading(false);
+      setError("Missing banner id.");
+      return;
     }
     // loadBanner is recreated each render but only needs to fire on id/role change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAdminAllowed, bannerId]);
 
-  const handleSoftDelete = async () => {
-    if (!window.confirm("Soft delete this banner?")) return;
-    setLoadingDelete(true);
+  useEffect(() => {
+    setActiveTab(0);
+  }, [bannerId]);
+
+  useEffect(() => {
+    const notice = location.state?.imageUploadNotice;
+    if (!notice || !bannerId.trim()) return;
+    setFeedback({ type: "error", message: String(notice) });
+    navigate(`/admin/homepage-cms/${encodeURIComponent(bannerId.trim())}`, { replace: true, state: {} });
+  }, [bannerId, location.state, navigate]);
+
+  const handleDelete = async () => {
+    if (!window.confirm("Soft-delete this banner?")) return;
+    setDeleting(true);
     setFeedback({ type: "", message: "" });
     try {
       await client.delete(`/admin/banners/${encodeURIComponent(bannerId.trim())}`);
       navigate("/admin/homepage-cms/banners");
-    } catch (error) {
-      setError(error?.response?.data?.message || error?.message || "Failed to delete banner.");
+    } catch (e) {
+      setFeedback({
+        type: "error",
+        message: getApiErrorMessage(e, "Failed to delete banner."),
+      });
     } finally {
-      setLoadingDelete(false);
+      setDeleting(false);
     }
   };
+
+  const { leftEntries, rightEntries } = useMemo(() => {
+    const entries = Object.entries(banner || {}).filter(([k]) => !DETAIL_SKIP_KEYS.has(k));
+    const mid = Math.ceil(entries.length / 2);
+    return {
+      leftEntries: entries.slice(0, mid),
+      rightEntries: entries.slice(mid),
+    };
+  }, [banner]);
+
+  const images = useMemo(() => normalizeBannerImages(banner), [banner]);
+  const hasImages = images.length > 0;
 
   if (!isAdminAllowed) {
     return (
@@ -95,67 +177,31 @@ const AdminBannerDetail = () => {
     );
   }
 
-  const desktopImageUrl = banner?.desktopImageUrl || banner?.imageUrl || banner?.image?.url || "";
-  const mobileImageUrl = banner?.mobileImageUrl || banner?.mobileImage?.url || "";
-  const bannerFields = [
-    { label: "ID", value: banner?.id || banner?._id || "-" },
-    { label: "Title", value: banner?.title || "-" },
-    { label: "Subtitle", value: banner?.subtitle || "-" },
-    { label: "CTA Text", value: banner?.ctaText || "-" },
-    { label: "CTA URL", value: banner?.ctaUrl || "-" },
-    { label: "Placement", value: banner?.placement || "-" },
-    { label: "Display Order", value: banner?.displayOrder ?? "-" },
-    { label: "Is Active", value: banner?.isActive ? "Yes" : "No" },
-    { label: "Created By", value: banner?.createdBy || "-" },
-    { label: "Created At", value: banner?.createdAt ? new Date(banner.createdAt).toLocaleString() : "-" },
-    { label: "Updated At", value: banner?.updatedAt ? new Date(banner.updatedAt).toLocaleString() : "-" },
-  ];
-  const mid = Math.ceil(bannerFields.length / 2);
-  const leftEntries = bannerFields.slice(0, mid);
-  const rightEntries = bannerFields.slice(mid);
+  const id = pickBannerId(banner);
+  const displayName = String(banner?.title || "Banner");
+  const statusLabel = banner?.isActive ? "Active" : "Inactive";
+  const placementLabel = banner?.placement ? String(banner.placement) : "—";
+
+  const cardSx = {
+    p: { xs: 2, sm: 3 },
+    borderRadius: 2,
+    border: `1px solid ${alpha(forest, 0.1)}`,
+    boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)",
+  };
 
   return (
     <Box sx={{ minHeight: "100dvh", bgcolor: pageBg, boxSizing: "border-box" }}>
       <AdminNavbar />
-      <Box sx={{ maxWidth: 1120, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
+
+      <Box sx={{ maxWidth: 1200, mx: "auto", px: { xs: 2, sm: 3 }, py: 3 }}>
         <AdminBreadcrumb
           items={[
             { label: "Dashboard", to: "/admin/dashboard" },
             { label: "Homepage CMS", to: "/admin/homepage-cms" },
             { label: "Banner Section", to: "/admin/homepage-cms/banners" },
-            { label: "Banner Detail" },
+            { label: loading ? "Banner" : displayName },
           ]}
         />
-
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} sx={{ mb: 2 }}>
-          <Typography variant="h5" sx={{ color: "#19271f", fontWeight: 800 }}>
-            Banner Detail
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            <Button variant="text" sx={{ textTransform: "none", fontWeight: 700, color: "#2a4135" }} onClick={() => navigate("/admin/homepage-cms/banners")}>
-              Back to list
-            </Button>
-            <Button variant="outlined" sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.5) }} onClick={loadBanner}>
-              Refresh
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              disabled={loadingDelete}
-              sx={{ textTransform: "none", fontWeight: 700 }}
-              onClick={handleSoftDelete}
-            >
-              {loadingDelete ? "Deleting..." : "Soft Delete"}
-            </Button>
-            <Button
-              variant="contained"
-              sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
-              onClick={() => navigate(`/admin/homepage-cms/${encodeURIComponent(bannerId.trim())}/images`)}
-            >
-              Manage Images
-            </Button>
-          </Stack>
-        </Stack>
 
         {feedback.message ? (
           <Alert severity={feedback.type === "success" ? "success" : "error"} sx={{ mb: 2 }}>
@@ -164,119 +210,211 @@ const AdminBannerDetail = () => {
         ) : null}
 
         {loading ? (
-          <Paper elevation={0} sx={{ p: 3, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-            <Typography color="text.secondary">Loading banner...</Typography>
-          </Paper>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+            <CircularProgress size={32} sx={{ color: accent }} />
+          </Box>
+        ) : error ? (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+          </Alert>
         ) : banner ? (
-          <Grid container spacing={2.5} display={"flex"} flexDirection={"column"} alignItems={"center"} justifyContent={"center"} >
-            <Grid size={{ xs: 12 }}>
-              <Paper
-                elevation={0}
-                sx={{
-                  p: { xs: 2, sm: 3 },
-                  borderRadius: 2,
-                  border: `1px solid ${alpha("#0f3828", 0.1)}`,
-                  boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)",
-                }}
+          <Paper elevation={0} sx={cardSx}>
+            <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
+              Banner
+            </Typography>
+            <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", wordBreak: "break-word" }}>
+              {displayName}
+            </Typography>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              justifyContent="space-between"
+              alignItems={{ sm: "center" }}
+              spacing={1.5}
+              sx={{ mt: 0.5 }}
+            >
+              <Typography sx={{ color: "#6f7f77", fontWeight: 600, fontSize: 13 }}>
+                Status: {statusLabel} | Placement: {placementLabel}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/edit`)}
+                disabled={!id}
+                sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
               >
-                <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
-                  Banner
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", mb: 2, wordBreak: "break-word" }}>
-                  {String(banner?.title || "Banner Detail")}
-                </Typography>
-                <Typography sx={{ color: "#6f7f77", fontWeight: 600 }}>
-                  Status: {banner?.isActive ? "Active" : "Inactive"} | Placement: {String(banner?.placement || "-")}
-                </Typography>
-                <Divider sx={{ my: 2 }} />
-                <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Stack spacing={1.25}>
-                      {leftEntries.map((field) => (
-                        <Box key={field.label}>
-                          <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                            {field.label}
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word" }}>
-                            {String(field.value ?? "-")}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Stack>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Stack spacing={1.25}>
-                      {rightEntries.map((field) => (
-                        <Box key={field.label}>
-                          <Typography variant="caption" sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}>
-                            {field.label}
-                          </Typography>
-                          <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word" }}>
-                            {String(field.value ?? "-")}
-                          </Typography>
-                        </Box>
-                      ))}
-                    </Stack>
-                  </Grid>
+                Edit Banner
+              </Button>
+            </Stack>
+
+            <Tabs
+              value={activeTab}
+              onChange={(_, next) => setActiveTab(next)}
+              sx={{
+                mt: 2,
+                mb: 0,
+                minHeight: 44,
+                borderBottom: `1px solid ${alpha(forest, 0.1)}`,
+                "& .MuiTab-root": {
+                  textTransform: "none",
+                  fontWeight: 700,
+                  fontSize: 15,
+                  minHeight: 44,
+                  color: "#6f7f77",
+                },
+                "& .Mui-selected": { color: "#19271f" },
+                "& .MuiTabs-indicator": { bgcolor: accent, height: 3, borderRadius: "3px 3px 0 0" },
+              }}
+            >
+              <Tab label="Details" />
+              <Tab label={hasImages ? `Images (${images.length})` : "Images (none)"} />
+            </Tabs>
+
+            <Divider sx={{ mb: 2 }} />
+
+            {activeTab === 0 ? (
+              <Grid container spacing={2}>
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1.25}>
+                    {leftEntries.map(([k, v]) => (
+                      <Box key={k}>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                        >
+                          {formatFieldLabel(k)}
+                        </Typography>
+                        <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                          {formatFieldValue(k, v)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
                 </Grid>
-                  <Grid size={{ xs: 12, md: 6 }}>
-                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-                      <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Desktop Image</Typography>
-                      <Stack spacing={1}>
-                        {/* <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                          Key: {desktopImageKey || banner?.image?.key || "-"}
-                        </Typography> */}
-                        <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                          URL:{" "}
-                          {desktopImageUrl ? (  
-                            <Box
-                              component="span"
-                              title={desktopImageUrl}
-                              onClick={() => openImageInNewTab(desktopImageUrl)}
-                              sx={{ color: accent, cursor: "pointer", textDecoration: "underline", wordBreak: "break-all" }}
-                            >
-                              {desktopImageUrl}
-                            </Box>
-                          ) : (
-                            "-"
-                          )}
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Stack spacing={1.25}>
+                    {rightEntries.map(([k, v]) => (
+                      <Box key={k}>
+                        <Typography
+                          variant="caption"
+                          sx={{ color: "#6f7f77", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.6 }}
+                        >
+                          {formatFieldLabel(k)}
                         </Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-                  
-                  <Grid size={{ xs: 12, md: 6 }} sx={{ mt: 2 }}>  
-                    <Paper elevation={0} sx={{ p: 2.5, borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}` }}>
-                      <Typography sx={{ fontWeight: 700, color: "#1f2a24", mb: 1.5 }}>Mobile Image</Typography>
-                      <Stack spacing={1}>
-                        <Typography variant="body2" sx={{ color: "#4e5a54" }}>
-                          URL :{" "}
-                          {mobileImageUrl ? (  
-                            <Box
-                              component="span"
-                              title={mobileImageUrl}
-                              onClick={() => openImageInNewTab(mobileImageUrl)}
-                              sx={{ color: accent, cursor: "pointer", textDecoration: "underline", wordBreak: "break-all" }}
-                            >
-                              {mobileImageUrl}
-                            </Box>
-                          ) : (
-                            "-"
-                          )}
+                        <Typography variant="body1" sx={{ color: "#1f2a24", wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
+                          {formatFieldValue(k, v)}
                         </Typography>
-                      </Stack>
-                    </Paper>
-                  </Grid>
-              </Paper>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Grid>
+              </Grid>
+            ) : (
+              <Box>
+                {hasImages ? (
+                  <Stack spacing={2}>
+                    {images.map((img) => (
+                      <Box
+                        key={img.label}
+                        sx={{
+                          p: 2,
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(forest, 0.1)}`,
+                          bgcolor: alpha(forest, 0.02),
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ color: "#6f7f77", fontWeight: 600, mb: 0.5 }}>
+                          {img.label}
+                          {img.key ? ` · Key: ${img.key}` : ""}
+                        </Typography>
+                        {img.url ? (
+                          <>
+                            <Link
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              variant="body2"
+                              sx={{ color: accent, fontWeight: 600, wordBreak: "break-all", display: "block", mb: 1.5 }}
+                            >
+                              {img.url}
+                            </Link>
+                            <Box
+                              component="a"
+                              href={img.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              sx={{ display: "inline-block", maxWidth: "100%", cursor: "pointer" }}
+                            >
+                              <Box
+                                component="img"
+                                src={img.url}
+                                alt={`${displayName} ${img.label}`}
+                                sx={{
+                                  maxWidth: "100%",
+                                  maxHeight: 280,
+                                  objectFit: "contain",
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha(forest, 0.12)}`,
+                                  display: "block",
+                                  boxShadow: "0 6px 16px rgba(20, 55, 42, 0.08)",
+                                }}
+                              />
+                            </Box>
+                          </>
+                        ) : (
+                          <Typography variant="body2" sx={{ color: "#6f7f77" }}>
+                            No preview URL — use Edit Banner to upload.
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+                    <Typography variant="body2" sx={{ color: "#6f7f77" }}>
+                      Click a URL or image to open in a new tab. To replace images, use Edit Banner.
+                    </Typography>
+                  </Stack>
+                ) : (
+                  <Box
+                    sx={{
+                      py: 4,
+                      px: 2,
+                      borderRadius: 2,
+                      bgcolor: alpha(forest, 0.03),
+                      border: `1px dashed ${alpha(forest, 0.15)}`,
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 700, color: "#19271f", mb: 0.5 }}>No images yet</Typography>
+                    <Typography variant="body2" sx={{ color: "#6f7f77", mb: 2 }}>
+                      Upload desktop and mobile banner images from Edit Banner.
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/edit`)}
+                      disabled={!id}
+                      sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+                    >
+                      Edit Banner
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            )}
 
-            </Grid>
+            <Divider sx={{ mt: 3, mb: 2 }} />
 
-          </Grid>
-        ) : (
-          <Alert severity="error">No banner data found.</Alert>
-        )}
-
-       
+            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" useFlexGap spacing={1}>
+              <Typography variant="caption" sx={{ color: "#8a9690", fontWeight: 600 }}>
+                ID: {id || "—"}
+              </Typography>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDelete}
+                disabled={deleting}
+                sx={{ textTransform: "none", fontWeight: 700 }}
+              >
+                {deleting ? "Deleting…" : "Soft Delete"}
+              </Button>
+            </Stack>
+          </Paper>
+        ) : null}
       </Box>
     </Box>
   );

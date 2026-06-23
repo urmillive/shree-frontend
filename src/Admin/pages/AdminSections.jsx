@@ -3,18 +3,10 @@ import {
   Alert,
   Box,
   Button,
-  CircularProgress,
-  FormControl,
-  InputLabel,
   MenuItem,
   Paper,
-  Select,
   Stack,
-  Table,
-  TableBody,
   TableCell,
-  TableContainer,
-  TableHead,
   TableRow,
   TextField,
   Typography,
@@ -23,17 +15,51 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import AdminActiveFilterChips from "../components/AdminActiveFilterChips";
+import AdminFilterSelect from "../components/AdminFilterSelect";
+import AdminListTable from "../components/AdminListTable";
+import AdminListSelectionToolbar from "../components/AdminListSelectionToolbar";
+import AdminMergedSearchField from "../components/AdminMergedSearchField";
 import AdminNavbar from "../components/AdminNavbar";
+import AdminRowSelectCell from "../components/AdminRowSelectCell";
+import { accent, pageBg } from "../components/adminListTheme";
+import { getApiErrorMessage } from "../../utils/apiError";
+import { useAdminMergedSearch } from "../hooks/useAdminMergedSearch";
+import { useAdminRowSelection } from "../hooks/useAdminRowSelection";
+import { sortRows, useAdminTableSort } from "../hooks/useAdminTableSort";
+import { exportListToCsv } from "../utils/exportAdminListCsv";
 
-const pageBg = "#ffffff";
-const accent = "#ab8a48";
+const SEARCH_BY_OPTIONS = [
+  { value: "title", label: "Title", placeholder: "Enter title" },
+  { value: "id", label: "Section ID", placeholder: "Enter section ID" },
+  { value: "subtitle", label: "Subtitle", placeholder: "Enter subtitle" },
+];
 
-const normalizeSections = (payload) => {
-  const levelOne = payload?.data ?? payload;
-  if (!levelOne) return [];
-  const list = levelOne.sections ?? levelOne.items ?? levelOne.data ?? levelOne;
-  return Array.isArray(list) ? list : [];
-};
+const TYPE_OPTIONS = [
+  { value: "", label: "All types" },
+  { value: "product_list", label: "product_list" },
+  { value: "category_grid", label: "category_grid" },
+];
+
+const SECTION_COLUMNS = [
+  { id: "title", label: "Title" },
+  { id: "type", label: "Type" },
+  { id: "status", label: "Status" },
+  { id: "displayOrder", label: "Display Order" },
+  { id: "products", label: "Products" },
+  { id: "categories", label: "Categories" },
+];
+
+const SECTION_EXPORT_COLUMNS = [
+  { id: "title", label: "Title", getValue: (row) => row.title },
+  { id: "type", label: "Type", getValue: (row) => row.type },
+  { id: "status", label: "Status", getValue: (row) => row.status },
+  { id: "displayOrder", label: "Display Order", getValue: (row) => row.displayOrder },
+  { id: "products", label: "Products", getValue: (row) => row.products },
+  { id: "categories", label: "Categories", getValue: (row) => row.categories },
+];
+
+const getSectionRowId = (row) => String(row?.sectionId || "");
 
 const defaultCreateForm = {
   title: "",
@@ -41,6 +67,13 @@ const defaultCreateForm = {
   type: "product_list",
   displayOrder: 0,
   isActive: true,
+};
+
+const normalizeSections = (payload) => {
+  const levelOne = payload?.data ?? payload;
+  if (!levelOne) return [];
+  const list = levelOne.sections ?? levelOne.items ?? levelOne.data ?? levelOne;
+  return Array.isArray(list) ? list : [];
 };
 
 const AdminSections = () => {
@@ -52,9 +85,25 @@ const AdminSections = () => {
   const [creating, setCreating] = useState(false);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
   const [sections, setSections] = useState([]);
-  const [searchInput, setSearchInput] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [createForm, setCreateForm] = useState(defaultCreateForm);
+
+  const { sortBy, sortOrder, handleSort } = useAdminTableSort({ defaultSortBy: "displayOrder", defaultSortOrder: "asc" });
+
+  const {
+    searchTypeInput,
+    setSearchTypeInput,
+    searchTypeApplied,
+    searchInput,
+    setSearchInput,
+    searchApplied,
+    handleSearch,
+    getSearchChip,
+    searchPlaceholder,
+  } = useAdminMergedSearch({
+    defaultSearchType: "title",
+    searchOptions: SEARCH_BY_OPTIONS,
+  });
 
   const loadSections = async () => {
     setLoading(true);
@@ -65,7 +114,7 @@ const AdminSections = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load sections.",
+        message: getApiErrorMessage(error, "Failed to load sections."),
       });
     } finally {
       setLoading(false);
@@ -78,17 +127,68 @@ const AdminSections = () => {
     }
   }, [isAdminAllowed]);
 
+  const activeFilters = useMemo(() => {
+    const chips = [];
+    const searchChip = getSearchChip();
+    if (searchChip) chips.push(searchChip);
+    if (typeFilter) {
+      const typeLabel = TYPE_OPTIONS.find((o) => o.value === typeFilter)?.label ?? typeFilter;
+      chips.push({
+        key: "type",
+        label: `Type: ${typeLabel}`,
+        onRemove: () => setTypeFilter(""),
+      });
+    }
+    return chips;
+  }, [getSearchChip, typeFilter]);
+
   const filteredRows = useMemo(() => {
-    const search = searchInput.trim().toLowerCase();
+    const search = searchApplied.trim().toLowerCase();
     return sections.filter((section) => {
       if (typeFilter && section?.type !== typeFilter) return false;
       if (!search) return true;
       const id = String(section?._id || section?.id || "").toLowerCase();
       const title = String(section?.title || "").toLowerCase();
       const subtitle = String(section?.subtitle || "").toLowerCase();
+      if (searchTypeApplied === "id") return id.includes(search);
+      if (searchTypeApplied === "title") return title.includes(search);
+      if (searchTypeApplied === "subtitle") return subtitle.includes(search);
       return id.includes(search) || title.includes(search) || subtitle.includes(search);
     });
-  }, [sections, searchInput, typeFilter]);
+  }, [sections, searchApplied, searchTypeApplied, typeFilter]);
+
+  const tableRows = useMemo(() => {
+    const mapped = filteredRows.map((section) => {
+      const productIds = Array.isArray(section?.productIds) ? section.productIds : [];
+      const categoryIds = Array.isArray(section?.categoryIds) ? section.categoryIds : [];
+      return {
+        raw: section,
+        sectionId: section?._id || section?.id || "",
+        title: section?.title || "-",
+        type: section?.type || "-",
+        status: section?.isActive ? "Active" : "Inactive",
+        displayOrder: Number(section?.displayOrder) || 0,
+        products: productIds.length,
+        categories: categoryIds.length,
+      };
+    });
+    return sortRows(mapped, sortBy, sortOrder, (row, columnId) => row[columnId]);
+  }, [filteredRows, sortBy, sortOrder]);
+
+  const selection = useAdminRowSelection();
+  const visibleRowIds = useMemo(() => tableRows.map(getSectionRowId).filter(Boolean), [tableRows]);
+  const headerCheckbox = selection.getHeaderCheckboxState(visibleRowIds);
+  const handleExport = () => {
+    const rowsToExport =
+      selection.selectedCount > 0
+        ? selection.filterSelectedRows(tableRows, getSectionRowId)
+        : tableRows;
+    exportListToCsv({
+      filename: `sections-${new Date().toISOString().slice(0, 10)}.csv`,
+      exportColumns: SECTION_EXPORT_COLUMNS,
+      rows: rowsToExport,
+    });
+  };
 
   const handleCreate = async (event) => {
     event.preventDefault();
@@ -112,7 +212,7 @@ const AdminSections = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to create section.",
+        message: getApiErrorMessage(error, "Failed to create section."),
       });
     } finally {
       setCreating(false);
@@ -191,66 +291,79 @@ const AdminSections = () => {
         </Paper>
 
         <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 2 }} alignItems={{ sm: "center" }}>
-          <TextField label="Search by ID, title, subtitle" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} size="small" fullWidth sx={{ maxWidth: { sm: 380 } }} />
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel id="type-filter-label">Type</InputLabel>
-            <Select labelId="type-filter-label" label="Type" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)}>
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="product_list">product_list</MenuItem>
-              <MenuItem value="category_grid">category_grid</MenuItem>
-            </Select>
-          </FormControl>
+          <AdminMergedSearchField
+            searchOptions={SEARCH_BY_OPTIONS}
+            searchTypeInput={searchTypeInput}
+            onSearchTypeChange={setSearchTypeInput}
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            onSearch={handleSearch}
+            placeholder={searchPlaceholder}
+            sx={{ maxWidth: { sm: 400 }, mb: { xs: 0, sm: 0 } }}
+          />
+          <AdminFilterSelect
+            label="Type"
+            labelId="sections-type-filter"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            options={TYPE_OPTIONS}
+            minWidth={180}
+          />
         </Stack>
 
-        <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: `1px solid ${alpha("#0f3828", 0.1)}`, boxShadow: "0 8px 20px rgba(20, 55, 42, 0.06)" }}>
-          <Table size="small">
-            <TableHead>
-              <TableRow sx={{ bgcolor: alpha("#ab8a48", 0.08) }}>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Title</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Type</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Display Order</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Products</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: "#2a4135" }}>Categories</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
-                    <CircularProgress size={28} sx={{ color: accent }} />
-                  </TableCell>
-                </TableRow>
-              ) : filteredRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: "#6f7f77" }}>
-                    No sections found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredRows.map((section, index) => {
-                  const sectionId = section?._id || section?.id || "";
-                  const productIds = Array.isArray(section?.productIds) ? section.productIds : [];
-                  const categoryIds = Array.isArray(section?.categoryIds) ? section.categoryIds : [];
-                  return (
-                    <TableRow key={sectionId || `section-${index}`} hover sx={{ cursor: sectionId ? "pointer" : "default" }} onClick={() => sectionId && navigate(`/admin/homepage-cms/sections/${encodeURIComponent(String(sectionId))}`)}>
-                      <TableCell>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2a24" }}>
-                          {section?.title || "-"}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{section?.type || "-"}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{section?.isActive ? "Active" : "Inactive"}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{section?.displayOrder ?? 0}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{productIds.length}</TableCell>
-                      <TableCell sx={{ color: "#1f2a24" }}>{categoryIds.length}</TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <AdminActiveFilterChips filters={activeFilters} />
+
+        <AdminListSelectionToolbar
+          selectedCount={selection.selectedCount}
+          totalVisible={tableRows.length}
+          onExport={handleExport}
+          onClearSelection={selection.clearSelection}
+        />
+
+        <AdminListTable
+          columns={SECTION_COLUMNS}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSort={handleSort}
+          loading={loading}
+          isEmpty={!loading && tableRows.length === 0}
+          emptyMessage="No sections found."
+          selectable
+          allSelected={headerCheckbox.checked}
+          indeterminate={headerCheckbox.indeterminate}
+          onToggleSelectAll={() => selection.selectAllVisible(visibleRowIds)}
+          selectAllDisabled={loading || tableRows.length === 0}
+        >
+          {tableRows.map((row, index) => {
+            const rowId = getSectionRowId(row);
+            const checked = selection.isSelected(rowId);
+            return (
+            <TableRow
+              key={rowId || `section-${index}`}
+              hover
+              selected={checked}
+              sx={{ cursor: rowId ? "pointer" : "default" }}
+              onClick={() => rowId && navigate(`/admin/homepage-cms/sections/${encodeURIComponent(rowId)}`)}
+            >
+              <AdminRowSelectCell
+                checked={checked}
+                disabled={!rowId}
+                onChange={() => selection.toggleRow(rowId)}
+              />
+              <TableCell>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2a24" }}>
+                  {row.title}
+                </Typography>
+              </TableCell>
+              <TableCell sx={{ color: "#1f2a24" }}>{row.type}</TableCell>
+              <TableCell sx={{ color: "#1f2a24" }}>{row.status}</TableCell>
+              <TableCell sx={{ color: "#1f2a24" }}>{row.displayOrder}</TableCell>
+              <TableCell sx={{ color: "#1f2a24" }}>{row.products}</TableCell>
+              <TableCell sx={{ color: "#1f2a24" }}>{row.categories}</TableCell>
+            </TableRow>
+            );
+          })}
+        </AdminListTable>
       </Box>
     </Box>
   );
