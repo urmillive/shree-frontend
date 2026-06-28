@@ -83,6 +83,7 @@ const AdminCategoryEdit = () => {
   const [imageSuccess, setImageSuccess] = useState("");
   const [stagingFile, setStagingFile] = useState(null);
   const imageInputRef = useRef(null);
+  const originalFormRef = useRef(defaultEditForm);
 
   const onFormChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -105,9 +106,11 @@ const AdminCategoryEdit = () => {
         setCategory(null);
         return;
       }
+      const mapped = mapCategoryToForm(fetched);
       setCategory(fetched);
       setAllCategories(flattenCategories(listData));
-      setForm(mapCategoryToForm(fetched));
+      setForm(mapped);
+      originalFormRef.current = mapped;
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to load category."));
     } finally {
@@ -188,28 +191,46 @@ const AdminCategoryEdit = () => {
     }
 
     const stagingSnapshot = stagingFile;
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      displayOrder: Number(form.displayOrder) || 0,
-      parent: form.parent || null,
-      isActive: Boolean(form.isActive),
-    };
+    const orig = originalFormRef.current;
+    const payload = {};
+
+    const newName = form.name.trim();
+    if (newName !== orig.name) payload.name = newName;
+
+    const newDesc = form.description.trim();
+    if (newDesc !== orig.description.trim()) payload.description = newDesc || undefined;
+
+    const newDisplayOrder = Number(form.displayOrder) || 0;
+    if (newDisplayOrder !== (Number(orig.displayOrder) || 0)) payload.displayOrder = newDisplayOrder;
+
+    const newParent = form.parent || null;
+    const origParent = orig.parent || null;
+    if (newParent !== origParent) payload.parent = newParent;
+
+    if (Boolean(form.isActive) !== Boolean(orig.isActive)) payload.isActive = Boolean(form.isActive);
+
     const metaTitle = form.metaTitle.trim();
     const metaDescription = form.metaDescription.trim();
-    if (metaTitle || metaDescription) {
-      payload.seo = {};
-      if (metaTitle) payload.seo.metaTitle = metaTitle;
-      if (metaDescription) payload.seo.metaDescription = metaDescription;
+    if (metaTitle !== orig.metaTitle || metaDescription !== orig.metaDescription) {
+      if (metaTitle || metaDescription) {
+        payload.seo = {};
+        if (metaTitle) payload.seo.metaTitle = metaTitle;
+        if (metaDescription) payload.seo.metaDescription = metaDescription;
+      }
     }
+
+    const hasFieldChanges = Object.keys(payload).length > 0;
 
     setSaving(true);
     let imageUploadError = "";
 
     try {
-      const { data } = await updateAdminCategory(categoryId, payload);
-      const updated = normalizeCategoryPayload(data) ?? category;
-      let mergedCategory = updated;
+      let mergedCategory = category;
+
+      if (hasFieldChanges) {
+        const { data } = await updateAdminCategory(categoryId, payload);
+        mergedCategory = normalizeCategoryPayload(data) ?? category;
+      }
 
       if (categoryId && stagingSnapshot) {
         setUploadingImage(true);
@@ -225,8 +246,10 @@ const AdminCategoryEdit = () => {
       }
 
       if (mergedCategory) {
+        const mapped = mapCategoryToForm(mergedCategory);
         setCategory(mergedCategory);
-        setForm(mapCategoryToForm(mergedCategory));
+        setForm(mapped);
+        originalFormRef.current = mapped;
       }
 
       if (imageUploadError) {

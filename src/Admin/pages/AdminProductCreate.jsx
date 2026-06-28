@@ -236,6 +236,7 @@ const AdminProductCreate = () => {
   const roleGate = localStorage.getItem("role");
 
   const [form, setForm] = useState(initialForm);
+  const originalFormRef = useRef(initialForm);
   const [categories, setCategories] = useState([]);
   const [creating, setCreating] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(isEditMode);
@@ -279,7 +280,9 @@ const AdminProductCreate = () => {
         setError("Product not found.");
         return;
       }
-      setForm(mapProductToForm(product));
+      const mapped = mapProductToForm(product);
+      setForm(mapped);
+      originalFormRef.current = mapped;
       const pid = pickProductId(product);
       setCreatedProductId(pid ? String(pid) : id);
       const nextImages = normalizeProductImages(product);
@@ -365,24 +368,6 @@ const AdminProductCreate = () => {
       return;
     }
 
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim(),
-      brand: form.brand.trim(),
-      category: form.category,
-      fabric: form.fabric,
-      tags: parsedTags,
-      regularPrice: Number(form.regularPrice),
-      discountPrice: Number(form.discountPrice),
-      taxPercent: Number(form.taxPercent),
-      status: form.status,
-      seo: {
-        metaTitle: form.metaTitle.trim(),
-        metaDescription: form.metaDescription.trim(),
-      },
-      variants,
-    };
-
     const flagsPayload = buildProductFlagsPayload(form);
 
     setCreating(true);
@@ -392,27 +377,70 @@ const AdminProductCreate = () => {
     try {
       if (isEditMode) {
         const id = editRouteProductId.trim();
-        const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, payload);
-        const updated = normalizeProductPayload(data);
-        const nextId = pickProductId(updated) || id;
-        savedProductId = String(nextId);
-        let mergedProduct = updated;
-        try {
-          mergedProduct = (await updateProductFlags(savedProductId, flagsPayload)) ?? mergedProduct;
-        } catch (flagErr) {
-          flagsError = getApiErrorMessage(flagErr, "Product saved but failed to update flags.");
+        const orig = originalFormRef.current;
+
+        const payload = {};
+        if (form.name.trim() !== orig.name) payload.name = form.name.trim();
+        if (form.description.trim() !== orig.description.trim()) payload.description = form.description.trim();
+        if (form.brand.trim() !== orig.brand) payload.brand = form.brand.trim();
+        if (form.category !== orig.category) payload.category = form.category;
+        if (form.fabric !== orig.fabric) payload.fabric = form.fabric;
+        if (form.status !== orig.status) payload.status = form.status;
+        if (String(form.regularPrice) !== String(orig.regularPrice)) payload.regularPrice = Number(form.regularPrice);
+        if (String(form.discountPrice) !== String(orig.discountPrice)) payload.discountPrice = Number(form.discountPrice);
+        if (String(form.taxPercent) !== String(orig.taxPercent)) payload.taxPercent = Number(form.taxPercent);
+
+        const origParsedTags = orig.tags.split(",").map((t) => t.trim()).filter(Boolean);
+        if (JSON.stringify(parsedTags) !== JSON.stringify(origParsedTags)) payload.tags = parsedTags;
+
+        const newMetaTitle = form.metaTitle.trim();
+        const newMetaDesc = form.metaDescription.trim();
+        if (newMetaTitle !== orig.metaTitle.trim() || newMetaDesc !== orig.metaDescription.trim()) {
+          payload.seo = { metaTitle: newMetaTitle, metaDescription: newMetaDesc };
         }
+
+        const origVariantsPayload = orig.variants
+          .map((item) => ({
+            color: { name: item.colorName.trim(), hexCode: item.colorHexCode.trim().toUpperCase() },
+            size: item.size,
+            stock: Number(item.stock),
+          }))
+          .filter((item) => item.color.name && item.color.hexCode && item.size && Number.isFinite(item.stock));
+        if (JSON.stringify(variants) !== JSON.stringify(origVariantsPayload)) payload.variants = variants;
+
+        const hasFieldChanges = Object.keys(payload).length > 0;
+        const flagsChanged = PRODUCT_FLAG_FIELDS.some(({ key }) => Boolean(form[key]) !== Boolean(orig[key]));
+
+        savedProductId = id;
+        let mergedProduct = null;
+
+        if (hasFieldChanges) {
+          const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, payload);
+          mergedProduct = normalizeProductPayload(data);
+          const nextId = pickProductId(mergedProduct) || id;
+          savedProductId = String(nextId);
+        }
+
+        if (flagsChanged) {
+          try {
+            mergedProduct = (await updateProductFlags(savedProductId, flagsPayload)) ?? mergedProduct;
+          } catch (flagErr) {
+            flagsError = getApiErrorMessage(flagErr, "Product saved but failed to update flags.");
+          }
+        }
+
         setCreatedProductId(savedProductId);
-        setProductImages(normalizeProductImages(mergedProduct));
+        if (mergedProduct) setProductImages(normalizeProductImages(mergedProduct));
 
         if (savedProductId && stagingSnapshot.length > 0) {
           setUploadingImage(true);
+          let uploadBase = mergedProduct ?? { images: productImages };
           try {
             for (const row of stagingSnapshot) {
-              const order = normalizeProductImages(mergedProduct).length;
-              mergedProduct = await uploadOneFileToProduct(savedProductId, row.file, order);
+              const order = normalizeProductImages(uploadBase).length;
+              uploadBase = await uploadOneFileToProduct(savedProductId, row.file, order);
             }
-            setProductImages(normalizeProductImages(mergedProduct));
+            setProductImages(normalizeProductImages(uploadBase));
             setStagingFiles([]);
           } catch (imgErr) {
             imageUploadError = getApiErrorMessage(imgErr, "Product saved but image upload failed.");
@@ -421,6 +449,23 @@ const AdminProductCreate = () => {
           }
         }
       } else {
+        const payload = {
+          name: form.name.trim(),
+          description: form.description.trim(),
+          brand: form.brand.trim(),
+          category: form.category,
+          fabric: form.fabric,
+          tags: parsedTags,
+          regularPrice: Number(form.regularPrice),
+          discountPrice: Number(form.discountPrice),
+          taxPercent: Number(form.taxPercent),
+          status: form.status,
+          seo: {
+            metaTitle: form.metaTitle.trim(),
+            metaDescription: form.metaDescription.trim(),
+          },
+          variants,
+        };
         const { data } = await client.post("/admin/products", payload);
         const created = normalizeProductPayload(data);
         const id = pickProductId(created);

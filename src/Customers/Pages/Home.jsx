@@ -3,6 +3,7 @@ import { Box, Container, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import HomepageBannerSlider from "../components/HomepageBannerSlider";
 import ShopCategoriesSection from "../components/ShopCategoriesSection";
+import GoogleReviewsSection from "../components/GoogleReviewsSection";
 import RecentlyViewedSection from "../components/RecentlyViewedSection";
 import { colors, fonts } from "../../theme/theme";
 
@@ -28,7 +29,15 @@ const Home = () => {
       {/* Hero — full-bleed editorial banner */}
       <HomepageBannerSlider placement="hero" />
 
-      {/* Editorial intro */}
+      {/* Shop by category */}
+      <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 4 } }}>
+        <ShopCategoriesSection />
+      </Container>
+
+      {/* Google reviews */}
+      <GoogleReviewsSection />
+
+      {/* Editorial intro
       <Container maxWidth={false} sx={{ maxWidth: 960, px: { xs: 3, sm: 4 } }}>
         <Stack
           spacing={2.5}
@@ -103,45 +112,58 @@ const Home = () => {
             Shop the new collection →
           </Box>
         </Stack>
-      </Container>
+      </Container> */}
 
       {/* Promo strip */}
       <Box>
         <HomepageBannerSlider placement="promo_strip" />
       </Box>
 
-      {/* Shop by category */}
-      <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 4 } }}>
-        <ShopCategoriesSection />
+     
+
+     
+
+      {/* Recently viewed */}
+      <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 4 }, pt: { xs: 6, sm: 9 }, pb: { xs: 8, sm: 12 } }}>
+        <RecentlyViewedSection showClear />
       </Container>
 
+
       {/* Craft promise strip */}
-      <Box
-        sx={{
-          bgcolor: colors.paper,
-          borderTop: `1px solid ${colors.line}`,
-          borderBottom: `1px solid ${colors.line}`,
-          py: { xs: 6, sm: 9 },
-        }}
-      >
-        <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 4 } }}>
+      <Box sx={{ bgcolor: colors.wine, py: { xs: 6, sm: 8 } }}>
+        <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 6 } }}>
           <Box
             sx={{
               display: "grid",
               gridTemplateColumns: { xs: "1fr", sm: "repeat(3, 1fr)" },
-              gap: { xs: 4, sm: 6 },
+              gap: { xs: 0, sm: 0 },
             }}
           >
-            {pillars.map((p) => (
-              <Box key={p.label} sx={{ textAlign: { xs: "left", sm: "center" } }}>
+            {pillars.map((p, i) => (
+              <Box
+                key={p.label}
+                sx={{
+                  textAlign: { xs: "left", sm: "center" },
+                  px: { xs: 0, sm: 5 },
+                  py: { xs: 4, sm: 5 },
+                  borderLeft: {
+                    xs: "none",
+                    sm: i === 0 ? "none" : `1px solid rgba(255,255,255,0.15)`,
+                  },
+                  borderTop: {
+                    xs: i === 0 ? "none" : `1px solid rgba(255,255,255,0.15)`,
+                    sm: "none",
+                  },
+                }}
+              >
                 <Typography
                   sx={{
                     fontFamily: fonts.body,
                     fontSize: 11,
                     letterSpacing: "0.28em",
                     textTransform: "uppercase",
-                    fontWeight: 500,
-                    color: colors.ink,
+                    fontWeight: 600,
+                    color: "#FFFFFF",
                     mb: 1.5,
                   }}
                 >
@@ -151,7 +173,7 @@ const Home = () => {
                   sx={{
                     fontFamily: fonts.body,
                     fontSize: 13.5,
-                    color: colors.muted,
+                    color: "rgba(255,255,255,0.68)",
                     lineHeight: 1.75,
                     maxWidth: 280,
                     mx: { sm: "auto" },
@@ -165,10 +187,6 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* Recently viewed */}
-      <Container maxWidth={false} sx={{ maxWidth: 1280, px: { xs: 3, sm: 4 }, pt: { xs: 6, sm: 9 }, pb: { xs: 8, sm: 12 } }}>
-        <RecentlyViewedSection showClear />
-      </Container>
     </Box>
   );
 };

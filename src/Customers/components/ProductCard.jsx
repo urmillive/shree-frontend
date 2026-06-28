@@ -27,7 +27,7 @@ const getFlag = (product) => {
   return "";
 };
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, priceColor, imageRadius }) {
   const name = resolveProductName(product);
   const image = resolveProductImage(product);
   const price = resolveProductPrice(product);
@@ -57,6 +57,7 @@ export default function ProductCard({ product }) {
           aspectRatio: "3 / 4",
           overflow: "hidden",
           bgcolor: colors.stone,
+          borderRadius: imageRadius ?? 0,
           mb: 1.5,
         }}
       >
@@ -153,8 +154,8 @@ export default function ProductCard({ product }) {
           sx={{
             fontFamily: fonts.body,
             fontSize: 13.5,
-            fontWeight: 500,
-            color: colors.ink,
+            fontWeight: 600,
+            color: priceColor ?? colors.ink,
             letterSpacing: "0.02em",
             pt: 0.25,
           }}

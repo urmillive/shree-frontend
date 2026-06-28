@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -64,6 +64,7 @@ const AdminProductListSectionCreate = () => {
   const isAdminAllowed = useMemo(() => ["super_admin", "manager"].includes(roleGate || ""), [roleGate]);
 
   const [form, setForm] = useState(defaultForm);
+  const originalFormRef = useRef(defaultForm);
   const [section, setSection] = useState(null);
   const [loadingSection, setLoadingSection] = useState(isEdit);
   const [selectedProducts, setSelectedProducts] = useState([]);
@@ -105,13 +106,15 @@ const AdminProductListSectionCreate = () => {
         setFeedback({ type: "error", message: "This section is not a product_list section." });
         return;
       }
-      setSection(fetched);
-      setForm({
+      const formData = {
         title: fetched?.title || "",
         subtitle: fetched?.subtitle || "",
         displayOrder: fetched?.displayOrder ?? 0,
         isActive: Boolean(fetched?.isActive),
-      });
+      };
+      setSection(fetched);
+      setForm(formData);
+      originalFormRef.current = formData;
       setSelectedProducts([]);
       setMarkedForRemoval([]);
     } catch (error) {
@@ -183,12 +186,17 @@ const AdminProductListSectionCreate = () => {
         );
         const idsToRemove = Array.from(new Set(markedForRemoval.map((id) => String(id).trim()).filter(Boolean)));
 
-        await client.put(`/admin/sections/${encodeURIComponent(sectionId)}`, {
-          title: form.title.trim(),
-          subtitle: form.subtitle.trim(),
-          displayOrder: Number(form.displayOrder) || 0,
-          isActive: Boolean(form.isActive),
-        });
+        const orig = originalFormRef.current;
+        const updatePayload = {};
+        if (form.title.trim() !== orig.title.trim()) updatePayload.title = form.title.trim();
+        if (form.subtitle.trim() !== orig.subtitle.trim()) updatePayload.subtitle = form.subtitle.trim();
+        const newOrder = Number(form.displayOrder) || 0;
+        if (newOrder !== (Number(orig.displayOrder) || 0)) updatePayload.displayOrder = newOrder;
+        if (Boolean(form.isActive) !== Boolean(orig.isActive)) updatePayload.isActive = Boolean(form.isActive);
+
+        if (Object.keys(updatePayload).length > 0) {
+          await client.put(`/admin/sections/${encodeURIComponent(sectionId)}`, updatePayload);
+        }
 
         if (idsToAdd.length) {
           await client.post(`/admin/sections/${encodeURIComponent(sectionId)}/products`, { ids: idsToAdd });
@@ -202,6 +210,12 @@ const AdminProductListSectionCreate = () => {
           );
         }
 
+        originalFormRef.current = {
+          title: form.title.trim(),
+          subtitle: form.subtitle.trim(),
+          displayOrder: Number(form.displayOrder) || 0,
+          isActive: Boolean(form.isActive),
+        };
         setFeedback({
           type: "success",
           message: `Section updated. Added ${idsToAdd.length} product(s), removed ${idsToRemove.length} product(s).`,

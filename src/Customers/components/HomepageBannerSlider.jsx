@@ -96,55 +96,55 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     );
   }
 
-  if (error || !activeBanner) {
-    return (
-      <Box
-        component="section"
-        sx={{
-          minHeight: { xs: 380, sm: 480 },
-          display: "grid",
-          placeItems: "center",
-          bgcolor: colors.stone,
-          px: 3,
-          textAlign: "center",
-        }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: fonts.body,
-              fontSize: 11,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              color: colors.muted,
-              mb: 1.5,
-            }}
-          >
-            Shree Gallery
-          </Typography>
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: fonts.display,
-              fontSize: { xs: 36, sm: 56 },
-              fontWeight: 500,
-              color: colors.ink,
-              letterSpacing: "-0.01em",
-              lineHeight: 1.05,
-              mb: 2,
-            }}
-          >
-            Considered fashion,
-            <br />
-            crafted slow.
-          </Typography>
-          <Typography sx={{ color: colors.muted, fontSize: 13.5 }}>
-            {error || "Editorial banners will appear here soon."}
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
+  // if (error || !activeBanner) {
+  //   return (
+  //     <Box
+  //       component="section"
+  //       sx={{
+  //         minHeight: { xs: 380, sm: 480 },
+  //         display: "grid",
+  //         placeItems: "center",
+  //         bgcolor: colors.stone,
+  //         px: 3,
+  //         textAlign: "center",
+  //       }}
+  //     >
+  //       <Box>
+  //         <Typography
+  //           sx={{
+  //             fontFamily: fonts.body,
+  //             fontSize: 11,
+  //             letterSpacing: "0.28em",
+  //             textTransform: "uppercase",
+  //             color: colors.muted,
+  //             mb: 1.5,
+  //           }}
+  //         >
+  //           Shree Gallery
+  //         </Typography>
+  //         <Typography
+  //           component="h1"
+  //           sx={{
+  //             fontFamily: fonts.display,
+  //             fontSize: { xs: 36, sm: 56 },
+  //             fontWeight: 500,
+  //             color: colors.ink,
+  //             letterSpacing: "-0.01em",
+  //             lineHeight: 1.05,
+  //             mb: 2,
+  //           }}
+  //         >
+  //           Considered fashion,
+  //           <br />
+  //           crafted slow.
+  //         </Typography>
+  //         <Typography sx={{ color: colors.muted, fontSize: 13.5 }}>
+  //           {error || "Editorial banners will appear here soon."}
+  //         </Typography>
+  //       </Box>
+  //     </Box>
+  //   );
+  // }
 
   const preferred = isMobile
     ? getBannerMobileImageUrl(activeBanner)
