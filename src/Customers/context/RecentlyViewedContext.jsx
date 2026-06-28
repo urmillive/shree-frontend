@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   clearRecentlyViewed as clearRecentlyViewedRequest,
   fetchRecentlyViewed,
@@ -24,7 +25,7 @@ export function RecentlyViewedProvider({ children }) {
       setProducts(normalizeRecentlyViewedProducts(response?.data));
     } catch (err) {
       setProducts([]);
-      setError(err?.response?.data?.message || err?.message || "Unable to load recently viewed.");
+      setError(getApiErrorMessage(err, "Unable to load recently viewed."));
     } finally {
       if (!quiet) {
         setLoading(false);
@@ -63,7 +64,7 @@ export function RecentlyViewedProvider({ children }) {
       await clearRecentlyViewedRequest();
       setProducts([]);
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Unable to clear history.");
+      setError(getApiErrorMessage(err, "Unable to clear history."));
       throw err;
     } finally {
       setBusy(false);

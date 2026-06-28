@@ -5,6 +5,7 @@ import { colors } from "../../theme/theme";
 import { createCustomerMuiTheme } from "../../theme/muiTheme";
 import CustomerFooter from "./CustomerFooter";
 import CustomerNavbar from "./CustomerNavbar";
+import VerificationWarningDialog from "./VerificationWarningDialog";
 import { CartProvider } from "../context/CartContext";
 import { WishlistProvider } from "../context/WishlistContext";
 import { RecentlyViewedProvider } from "../context/RecentlyViewedContext";

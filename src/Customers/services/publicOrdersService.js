@@ -34,6 +34,11 @@ export function normalizeCustomerOrdersListPayload(payload) {
     }
   }
 
+  const metaTotal = payload?.meta?.total;
+  if (metaTotal != null && Number.isFinite(Number(metaTotal))) {
+    total = Number(metaTotal);
+  }
+
   return { items, total };
 }
 
@@ -96,3 +101,25 @@ export const fetchCustomerOrder = (orderNumber) =>
 
 export const cancelCustomerOrder = (orderNumber, body) =>
   client.post(`/orders/${encodeURIComponent(orderNumber)}/cancel`, body);
+
+export const initiateRazorpayPayment = (orderNumber) =>
+  client.post(`/payments/orders/${encodeURIComponent(orderNumber)}/initiate`);
+
+export const verifyRazorpayPayment = (body) =>
+  client.post("/payments/verify", body);
+
+export const trackCustomerShipment = (orderNumber) =>
+  client.get(`/shipping/${encodeURIComponent(orderNumber)}/track`);
+
+export function normalizeInitiatePaymentPayload(payload) {
+  const root = payload?.data !== undefined ? payload.data : payload;
+  if (!root || typeof root !== "object") return null;
+  const inner = root.data !== undefined && !Array.isArray(root.data) ? root.data : root;
+  return {
+    razorpayOrderId: inner.razorpayOrderId ?? inner.razorpay_order_id ?? "",
+    amount: Number(inner.amount ?? inner.amount_due ?? 0),
+    currency: inner.currency || "INR",
+    orderNumber: inner.orderNumber ?? inner.order_no ?? "",
+    keyId: inner.keyId ?? inner.razorpayKeyId ?? "",
+  };
+}

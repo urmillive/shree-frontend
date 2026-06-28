@@ -3,9 +3,11 @@ import {
   Alert,
   Box,
   Button,
+  Checkbox,
   Chip,
   CircularProgress,
   FormControl,
+  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
@@ -18,6 +20,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -26,7 +29,25 @@ const STATUS_OPTIONS = ["draft", "active", "inactive"];
 const SIZE_OPTIONS = ["XS", "S", "M", "L", "XL", "XXL"];
 const FABRIC_OPTIONS = ["Cotton", "Linen", "Silk", "Organic Cotton", "Other"];
 const TAX_PERCENT_OPTIONS = ["0", "5", "12", "18"];
-const SECTIONS = ["Basic Info", "Pricing", "SEO", "Variants"];
+const SECTIONS = ["Basic Info", "Pricing", "Flags", "SEO", "Variants"];
+
+const PRODUCT_FLAG_FIELDS = [
+  { key: "isTrending", label: "Trending" },
+  { key: "isFeatured", label: "Featured" },
+  { key: "isNewArrival", label: "New arrival" },
+  { key: "isBestSeller", label: "Best seller" },
+  { key: "isOnSale", label: "On sale" },
+];
+
+const createEmptyProductFlags = () =>
+  Object.fromEntries(PRODUCT_FLAG_FIELDS.map(({ key }) => [key, false]));
+
+function mapFlagsFromProduct(product) {
+  const flags = product?.flags && typeof product.flags === "object" ? product.flags : {};
+  return Object.fromEntries(
+    PRODUCT_FLAG_FIELDS.map(({ key }) => [key, Boolean(flags[key] ?? product?.[key])])
+  );
+}
 
 const createEmptyVariant = () => ({
   colorName: "",
@@ -48,6 +69,7 @@ const initialForm = {
   status: "draft",
   metaTitle: "",
   metaDescription: "",
+  ...createEmptyProductFlags(),
   variants: [createEmptyVariant()],
 };
 
@@ -70,7 +92,7 @@ function normalizeCategoriesListPayload(payload) {
 }
 
 function getProductFormErrorMessage(error, isEdit) {
-  const rawMessage = error?.response?.data?.message || error?.message || "";
+  const rawMessage = getApiErrorMessage(error, "");
   if (!rawMessage) return isEdit ? "Failed to update product." : "Failed to create product.";
 
   if (rawMessage.toLowerCase().includes("invalid enum value")) {
@@ -114,8 +136,18 @@ function mapProductToForm(product) {
     status: product.status || "draft",
     metaTitle: String(product.seo?.metaTitle ?? product.metaTitle ?? ""),
     metaDescription: String(product.seo?.metaDescription ?? product.metaDescription ?? ""),
+    ...mapFlagsFromProduct(product),
     variants,
   };
+}
+
+function buildProductFlagsPayload(form) {
+  return Object.fromEntries(PRODUCT_FLAG_FIELDS.map(({ key }) => [key, Boolean(form[key])]));
+}
+
+async function updateProductFlags(productId, flags) {
+  const { data } = await client.patch(`/admin/products/${encodeURIComponent(productId)}/flags`, flags);
+  return normalizeProductPayload(data);
 }
 
 function normalizeProductImages(product) {
@@ -253,7 +285,7 @@ const AdminProductCreate = () => {
       const nextImages = normalizeProductImages(product);
       setProductImages(nextImages);
     } catch (e) {
-      setError(e?.response?.data?.message || e?.message || "Failed to load product.");
+      setError(getApiErrorMessage(e, "Failed to load product."));
     } finally {
       setLoadingProduct(false);
     }
@@ -265,6 +297,10 @@ const AdminProductCreate = () => {
 
   const onFormChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const onFlagChange = (key, checked) => {
+    setForm((prev) => ({ ...prev, [key]: Boolean(checked) }));
   };
 
   const onVariantChange = (index, key, value) => {
@@ -347,31 +383,39 @@ const AdminProductCreate = () => {
       variants,
     };
 
+    const flagsPayload = buildProductFlagsPayload(form);
+
     setCreating(true);
+    let flagsError = "";
+    let imageUploadError = "";
+    let savedProductId = "";
     try {
       if (isEditMode) {
         const id = editRouteProductId.trim();
         const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, payload);
         const updated = normalizeProductPayload(data);
         const nextId = pickProductId(updated) || id;
-        const slug = updated?.slug ? String(updated.slug) : "";
-        setSuccess(`Product updated${slug ? ` (slug: ${slug})` : ""}.`);
-        setCreatedProductId(String(nextId));
+        savedProductId = String(nextId);
         let mergedProduct = updated;
-        setProductImages(normalizeProductImages(updated));
+        try {
+          mergedProduct = (await updateProductFlags(savedProductId, flagsPayload)) ?? mergedProduct;
+        } catch (flagErr) {
+          flagsError = getApiErrorMessage(flagErr, "Product saved but failed to update flags.");
+        }
+        setCreatedProductId(savedProductId);
+        setProductImages(normalizeProductImages(mergedProduct));
 
-        if (nextId && stagingSnapshot.length > 0) {
+        if (savedProductId && stagingSnapshot.length > 0) {
           setUploadingImage(true);
           try {
             for (const row of stagingSnapshot) {
               const order = normalizeProductImages(mergedProduct).length;
-              mergedProduct = await uploadOneFileToProduct(String(nextId), row.file, order);
+              mergedProduct = await uploadOneFileToProduct(savedProductId, row.file, order);
             }
             setProductImages(normalizeProductImages(mergedProduct));
             setStagingFiles([]);
-            setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
           } catch (imgErr) {
-            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+            imageUploadError = getApiErrorMessage(imgErr, "Product saved but image upload failed.");
           } finally {
             setUploadingImage(false);
           }
@@ -380,29 +424,42 @@ const AdminProductCreate = () => {
         const { data } = await client.post("/admin/products", payload);
         const created = normalizeProductPayload(data);
         const id = pickProductId(created);
-        const slug = created?.slug ? String(created.slug) : "";
-        setSuccess(`Product created${id ? ` (id: ${id})` : ""}${slug ? ` (slug: ${slug})` : ""}.`);
-        setCreatedProductId(id ? String(id) : "");
+        savedProductId = id ? String(id) : "";
         let mergedProduct = created;
-        const nextImages = normalizeProductImages(created);
-        setProductImages(nextImages);
+        if (savedProductId) {
+          try {
+            mergedProduct = (await updateProductFlags(savedProductId, flagsPayload)) ?? mergedProduct;
+          } catch (flagErr) {
+            flagsError = getApiErrorMessage(flagErr, "Product created but failed to update flags.");
+          }
+        }
+        setCreatedProductId(savedProductId);
+        setProductImages(normalizeProductImages(mergedProduct));
 
-        if (id && stagingSnapshot.length > 0) {
+        if (savedProductId && stagingSnapshot.length > 0) {
           setUploadingImage(true);
           try {
             for (const row of stagingSnapshot) {
               const order = normalizeProductImages(mergedProduct).length;
-              mergedProduct = await uploadOneFileToProduct(String(id), row.file, order);
+              mergedProduct = await uploadOneFileToProduct(savedProductId, row.file, order);
             }
             setProductImages(normalizeProductImages(mergedProduct));
             setStagingFiles([]);
-            setImageSuccess(`${stagingSnapshot.length} image(s) uploaded and confirmed.`);
           } catch (imgErr) {
-            setImageError(imgErr?.response?.data?.message || imgErr?.message || "Product saved but image upload failed.");
+            imageUploadError = getApiErrorMessage(imgErr, "Product saved but image upload failed.");
           } finally {
             setUploadingImage(false);
           }
         }
+      }
+
+      if (flagsError) {
+        setError(flagsError);
+      } else if (imageUploadError) {
+        setImageError(imageUploadError);
+      } else if (savedProductId) {
+        navigate(`/admin/products/${encodeURIComponent(savedProductId)}`);
+        return;
       }
     } catch (e) {
       setError(getProductFormErrorMessage(e, isEditMode));
@@ -442,7 +499,7 @@ const AdminProductCreate = () => {
         imageFileInputRef.current.value = "";
       }
     } catch (e) {
-      setImageError(e?.response?.data?.message || e?.message || "Failed to upload image(s).");
+      setImageError(getApiErrorMessage(e, "Failed to upload image(s)."));
     } finally {
       setUploadingImage(false);
     }
@@ -459,7 +516,7 @@ const AdminProductCreate = () => {
       setProductImages(nextImages);
       setImageSuccess("Image deleted.");
     } catch (e) {
-      setImageError(e?.response?.data?.message || e?.message || "Failed to delete image.");
+      setImageError(getApiErrorMessage(e, "Failed to delete image."));
     } finally {
       setUploadingImage(false);
     }
@@ -642,6 +699,31 @@ const AdminProductCreate = () => {
               </Stack>
 
               <Box sx={{ mt: 2.5 }}>
+
+
+              <Paper elevation={0} sx={{ p: 1 }}>
+              <Typography sx={{ mb: 0.75, fontWeight: 800, color: "#1f2a24" }}>Product flags</Typography>
+              <Typography variant="body2" sx={{ mb: 1.1, color: "#5a6761" }}>
+                Mark this product for storefront highlights (saved with the product).
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={0.5} useFlexGap flexWrap="wrap">
+                {PRODUCT_FLAG_FIELDS.map(({ key, label }) => (
+                  <FormControlLabel
+                    key={key}
+                    control={
+                      <Checkbox
+                        checked={Boolean(form[key])}
+                        onChange={(e) => onFlagChange(key, e.target.checked)}
+                        size="small"
+                        sx={{ color: alpha(accent, 0.6), "&.Mui-checked": { color: accent } }}
+                      />
+                    }
+                    label={label}
+                    sx={{ mr: 2, "& .MuiFormControlLabel-label": { fontSize: "0.9rem", color: "#2a4135", fontWeight: 600 } }}
+                  />
+                ))}
+              </Stack>
+            </Paper>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}>
               <Typography sx={{ fontWeight: 800, color: "#1f2a24" }}>Variants</Typography>
               <Button size="small" variant="outlined" onClick={addVariant} sx={{ textTransform: "none", borderColor: alpha("#0f3828", 0.2), color: "#1f2a24" }}>
@@ -786,7 +868,7 @@ const AdminProductCreate = () => {
           {imageError ? <Alert severity="error" sx={{ mt: 2 }}>{imageError}</Alert> : null}
           {imageSuccess ? <Alert severity="success" sx={{ mt: 2 }}>{imageSuccess}</Alert> : null}
 
-          <Stack direction="row" justifyContent="space-between" sx={{ mt: 2 }}>
+          <Stack direction="row" gap={2} sx={{ mt: 2 }}>
             <Button
               variant="outlined"
               onClick={() =>
@@ -796,7 +878,7 @@ const AdminProductCreate = () => {
               }
               sx={{ textTransform: "none", fontWeight: 700, borderColor: alpha("#0f3828", 0.25), color: "#1f2a24" }}
             >
-              {isEditMode ? "Back to product" : "Back to Products"}
+              {isEditMode ? "Discard changes" : "Discard"}
             </Button>
             <Button
               type="submit"

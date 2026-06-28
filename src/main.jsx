@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from "@mui/material";
 import "./index.css";
 import App from "./App.jsx";
+import { ToastProvider } from "./context/ToastContext";
 import { colors } from "./theme/theme";
 import { createAppMuiTheme } from "./theme/muiTheme";
 
@@ -16,7 +17,9 @@ createRoot(rootEl).render(
     <BrowserRouter>
       <ThemeProvider theme={createAppMuiTheme()}>
         <CssBaseline />
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </ThemeProvider>
     </BrowserRouter>
   </StrictMode>

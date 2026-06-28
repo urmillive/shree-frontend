@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getStoredAccessToken } from "../../Setup/Axios";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   addItemToWishlist,
   checkWishlistItem,
@@ -39,7 +40,7 @@ export function WishlistProvider({ children }) {
       setWishlist(normalizeWishlistPayload(response?.data));
     } catch (err) {
       setWishlist(EMPTY_WISHLIST);
-      setError(err?.response?.data?.message || err?.message || "Unable to load wishlist.");
+      setError(getApiErrorMessage(err, "Unable to load wishlist."));
     } finally {
       setLoading(false);
     }
@@ -63,7 +64,7 @@ export function WishlistProvider({ children }) {
       setWishlist(normalizeWishlistPayload(response?.data));
       return response;
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Wishlist update failed.");
+      setError(getApiErrorMessage(err, "Wishlist update failed."));
       throw err;
     } finally {
       setBusy(false);

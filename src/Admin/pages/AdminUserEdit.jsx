@@ -6,17 +6,20 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  FormControl,
   Grid,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const accent = "#ab8a48";
@@ -24,10 +27,19 @@ const pageBg = "#ffffff";
 const forest = "#0f3828";
 
 const ROLE_OPTIONS = [
-  { value: "customer", label: "Customer", hint: "Default storefront access" },
-  { value: "manager", label: "Manager", hint: "Admin tools, limited scope" },
-  { value: "super_admin", label: "Super admin", hint: "Full admin control" },
+  { value: "customer", label: "Customer" },
+  { value: "manager", label: "Manager" },
+  { value: "super_admin", label: "Super admin" },
 ];
+
+const PROFILE_SKIP_KEYS = new Set([
+  "password",
+  "passwordHash",
+  "addresses",
+  "savedAddresses",
+  "shippingAddresses",
+  "address",
+]);
 
 function normalizeUserPayload(payload) {
   if (payload == null) return null;
@@ -59,6 +71,7 @@ const AdminUserEdit = () => {
   const [actionSuccess, setActionSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [roleDraft, setRoleDraft] = useState("customer");
+  const [statusDraft, setStatusDraft] = useState(true);
 
   useEffect(() => {
     if (!userId) {
@@ -79,13 +92,14 @@ const AdminUserEdit = () => {
         const body = normalizeUserPayload(data);
         setUser(body && typeof body === "object" ? body : null);
         setRoleDraft(String(body?.role ?? "customer"));
+        setStatusDraft(Boolean(body?.isActive));
         if (!body || typeof body !== "object") {
           setError("Unexpected response from server.");
         }
       } catch (e) {
         if (cancelled) return;
         setUser(null);
-        setError(e?.response?.data?.message || e?.message || "Failed to load user.");
+        setError(getApiErrorMessage(e, "Failed to load user."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -97,12 +111,8 @@ const AdminUserEdit = () => {
     };
   }, [userId]);
 
-  useEffect(() => {
-    if (user?.role != null) setRoleDraft(String(user.role));
-  }, [user?.role]);
-
   const { leftEntries, rightEntries } = useMemo(() => {
-    const entries = Object.entries(user || {}).filter(([k]) => k !== "password" && k !== "passwordHash");
+    const entries = Object.entries(user || {}).filter(([k]) => !PROFILE_SKIP_KEYS.has(k));
     const mid = Math.ceil(entries.length / 2);
     return {
       leftEntries: entries.slice(0, mid),
@@ -122,50 +132,61 @@ const AdminUserEdit = () => {
   }
 
   const canManageUser = roleGate === "super_admin";
-  const isActive = Boolean(user?.isActive);
+  const savedActive = Boolean(user?.isActive);
+  const savedRole = String(user?.role ?? "customer");
   const displayName = String(user?.name ?? user?.fullName ?? user?.email ?? "User");
 
-  const updateUserStatus = async (nextStatus) => {
-    if (!userId) return;
-    setActionLoading(true);
-    setActionError("");
-    setActionSuccess("");
-    try {
-      const { data } = await client.patch(`/admin/users/${encodeURIComponent(userId)}/status`, {
-        isActive: nextStatus,
-      });
-      const payload = normalizeUserPayload(data);
-      setUser((prev) => ({
-        ...(prev || {}),
-        ...(payload && typeof payload === "object" ? payload : {}),
-        isActive: nextStatus,
-      }));
-      setActionSuccess(nextStatus ? "User reactivated successfully." : "User deactivated successfully.");
-    } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to update user status.");
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  const statusChanged = statusDraft !== savedActive;
+  const roleChanged = roleDraft !== savedRole;
+  const hasUnsavedChanges = statusChanged || roleChanged;
 
-  const updateUserRole = async () => {
-    if (!userId || !roleDraft) return;
+  const saveUserChanges = async () => {
+    if (!userId || !canManageUser || !hasUnsavedChanges) return;
+
     setActionLoading(true);
     setActionError("");
     setActionSuccess("");
+
+    let nextUser = { ...(user || {}) };
+    const updates = [];
+
     try {
-      const { data } = await client.patch(`/admin/users/${encodeURIComponent(userId)}/role`, {
-        role: roleDraft,
-      });
-      const payload = normalizeUserPayload(data);
-      setUser((prev) => ({
-        ...(prev || {}),
-        ...(payload && typeof payload === "object" ? payload : {}),
-        role: roleDraft,
-      }));
-      setActionSuccess("User role updated successfully.");
+      if (statusChanged) {
+        const { data } = await client.patch(`/admin/users/${encodeURIComponent(userId)}/status`, {
+          isActive: statusDraft,
+        });
+        const payload = normalizeUserPayload(data);
+        nextUser = {
+          ...nextUser,
+          ...(payload && typeof payload === "object" ? payload : {}),
+          isActive: statusDraft,
+        };
+        updates.push(statusDraft ? "account reactivated" : "account deactivated");
+      }
+
+      if (roleChanged) {
+        const { data } = await client.patch(`/admin/users/${encodeURIComponent(userId)}/role`, {
+          role: roleDraft,
+        });
+        const payload = normalizeUserPayload(data);
+        nextUser = {
+          ...nextUser,
+          ...(payload && typeof payload === "object" ? payload : {}),
+          role: roleDraft,
+        };
+        updates.push("role updated");
+      }
+
+      setUser(nextUser);
+      setStatusDraft(Boolean(nextUser.isActive));
+      setRoleDraft(String(nextUser.role ?? roleDraft));
+      setActionSuccess(
+        updates.length === 2
+          ? "User account and role saved successfully."
+          : `User ${updates[0]} successfully.`,
+      );
     } catch (e) {
-      setActionError(e?.response?.data?.message || e?.message || "Failed to update user role.");
+      setActionError(getApiErrorMessage(e, "Failed to save changes."));
     } finally {
       setActionLoading(false);
     }
@@ -177,6 +198,14 @@ const AdminUserEdit = () => {
     border: `1px solid ${alpha(forest, 0.1)}`,
     boxShadow: "0 8px 24px rgba(20, 55, 42, 0.06)",
     bgcolor: "#fff",
+  };
+
+  const actionBtnSx = {
+    textTransform: "none",
+    fontWeight: 700,
+    borderRadius: 2,
+    boxShadow: "none",
+    whiteSpace: "nowrap",
   };
 
   return (
@@ -227,19 +256,114 @@ const AdminUserEdit = () => {
               <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
                 Full profile
               </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", mb: 0.5, wordBreak: "break-word" }}>
-                {displayName}
-              </Typography>
-              <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-                <Chip
-                  size="small"
-                  label={isActive ? "Active" : "Inactive"}
-                  color={isActive ? "success" : "default"}
-                  sx={{ fontWeight: 700, ...(isActive ? {} : { bgcolor: alpha("#1f2a24", 0.08), color: "#1f2a24" }) }}
-                />
-                <Chip size="small" label={String(user?.role ?? "—")} variant="outlined" sx={{ fontWeight: 600, borderColor: alpha(accent, 0.55), color: "#5c4a2a" }} />
+
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                alignItems={{ xs: "stretch", md: "flex-start" }}
+                justifyContent="space-between"
+                spacing={2}
+                sx={{ mt: 0.5, mb: 1.5 }}
+              >
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography variant="h5" sx={{ fontWeight: 800, color: "#19271f", wordBreak: "break-word" }}>
+                    {displayName}
+                  </Typography>
+                  <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
+                    <Chip
+                      size="small"
+                      label={statusDraft ? "Active" : "Inactive"}
+                      color={statusDraft ? "success" : "default"}
+                      sx={{
+                        fontWeight: 700,
+                        ...(statusDraft ? {} : { bgcolor: alpha("#1f2a24", 0.08), color: "#1f2a24" }),
+                      }}
+                    />
+                    <Chip
+                      size="small"
+                      label={roleDraft.replace(/_/g, " ")}
+                      variant="outlined"
+                      sx={{ fontWeight: 600, borderColor: alpha(accent, 0.55), color: "#5c4a2a", textTransform: "capitalize" }}
+                    />
+                    {hasUnsavedChanges ? (
+                      <Chip size="small" label="Unsaved changes" color="warning" sx={{ fontWeight: 700 }} />
+                    ) : null}
+                  </Stack>
+                </Box>
+
+                {canManageUser ? (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    alignItems={{ xs: "stretch", sm: "center" }}
+                    spacing={1.25}
+                    sx={{ flexShrink: 0 }}
+                  >
+                    <FormControl size="small" sx={{ minWidth: { xs: "100%", sm: 160 } }}>
+                      <InputLabel id="admin-user-role-label">Role</InputLabel>
+                      <Select
+                        labelId="admin-user-role-label"
+                        label="Role"
+                        value={roleDraft}
+                        disabled={actionLoading}
+                        onChange={(e) => setRoleDraft(String(e.target.value))}
+                        sx={{ borderRadius: 2, bgcolor: "#fff" }}
+                      >
+                        {ROLE_OPTIONS.map((opt) => (
+                          <MenuItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
+                    {statusDraft ? (
+                      <Button
+                        variant="contained"
+                        color="error"
+                        disabled={actionLoading}
+                        onClick={() => setStatusDraft(false)}
+                        sx={{
+                          ...actionBtnSx,
+                          py: 1,
+                          "&:hover": { boxShadow: "0 4px 14px rgba(183, 28, 28, 0.25)" },
+                        }}
+                      >
+                        Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="contained"
+                        color="success"
+                        disabled={actionLoading}
+                        onClick={() => setStatusDraft(true)}
+                        sx={{
+                          ...actionBtnSx,
+                          py: 1,
+                          "&:hover": { boxShadow: "0 4px 14px rgba(46, 125, 50, 0.25)" },
+                        }}
+                      >
+                        Activate
+                      </Button>
+                    )}
+                  </Stack>
+                ) : (
+                  <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ flexShrink: 0 }}>
+                    <Chip
+                      size="small"
+                      label={savedActive ? "Active" : "Inactive"}
+                      color={savedActive ? "success" : "default"}
+                      sx={{ fontWeight: 700 }}
+                    />
+                    <Chip
+                      size="small"
+                      label={savedRole.replace(/_/g, " ")}
+                      variant="outlined"
+                      sx={{ fontWeight: 600, textTransform: "capitalize" }}
+                    />
+                  </Stack>
+                )}
               </Stack>
-              <Divider sx={{ mb: 2 }} />
+
+              <Divider sx={{ my: 2 }} />
               <Grid container spacing={2.5}>
                 <Grid size={{ xs: 12, md: 6 }}>
                   <Stack spacing={1.35}>
@@ -286,147 +410,42 @@ const AdminUserEdit = () => {
                   </Stack>
                 </Grid>
               </Grid>
-            </Paper>
 
-            <Grid container spacing={2.5}>
-              <Grid item xs={12} md={6}>
-                <Paper elevation={0} sx={{ ...cardSx, height: "100%" }}>
-                  <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
-                    Account status
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: alpha("#1f2a24", 0.72), mb: 2, mt: 0.5 }}>
-                    Deactivated users cannot sign in. Reactivate when access should be restored.
-                  </Typography>
-                  <Box
-                    sx={{
-                      p: 2,
-                      borderRadius: 2,
-                      mb: 2,
-                      bgcolor: isActive ? alpha("#2e7d32", 0.06) : alpha("#1f2a24", 0.05),
-                      border: `1px solid ${isActive ? alpha("#2e7d32", 0.22) : alpha("#1f2a24", 0.12)}`,
-                    }}
+              {canManageUser ? (
+                <>
+                  <Divider sx={{ mt: 2.5, mb: 2 }} />
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.25}
+                    justifyContent="flex-start"
+                    alignItems={{ xs: "stretch", sm: "center" }}
                   >
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: "#6f7f77", letterSpacing: 0.8 }}>
-                      Current state
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 800, color: "#19271f", mt: 0.5 }}>
-                      {isActive ? "This account is active" : "This account is deactivated"}
-                    </Typography>
-                  </Box>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
                     <Button
-                      fullWidth
-                      variant="contained"
-                      color="error"
-                      disabled={!canManageUser || actionLoading || !isActive}
-                      onClick={() => updateUserStatus(false)}
-                      sx={{
-                        textTransform: "none",
-                        fontWeight: 700,
-                        py: 1.35,
-                        borderRadius: 2,
-                        boxShadow: "none",
-                        "&:hover": { boxShadow: "0 4px 14px rgba(183, 28, 28, 0.25)" },
-                      }}
+                      variant="outlined"
+                      disabled={actionLoading}
+                      onClick={() => navigate(`/admin/users/${encodeURIComponent(String(userId))}`)}
+                      sx={{ ...actionBtnSx, py: 1.1, borderColor: alpha(forest, 0.25), color: "#1f2a24" }}
                     >
-                      Deactivate
+                      Discard
                     </Button>
                     <Button
-                      fullWidth
                       variant="contained"
-                      color="success"
-                      disabled={!canManageUser || actionLoading || isActive}
-                      onClick={() => updateUserStatus(true)}
+                      disabled={actionLoading || !hasUnsavedChanges}
+                      onClick={saveUserChanges}
                       sx={{
-                        textTransform: "none",
-                        fontWeight: 700,
-                        py: 1.35,
-                        borderRadius: 2,
-                        boxShadow: "none",
-                        "&:hover": { boxShadow: "0 4px 14px rgba(46, 125, 50, 0.25)" },
+                        ...actionBtnSx,
+                        py: 1.1,
+                        px: 3,
+                        bgcolor: accent,
+                        "&:hover": { bgcolor: "#8f723c", boxShadow: "0 6px 18px rgba(171, 138, 72, 0.35)" },
                       }}
                     >
-                      Reactivate
+                      {actionLoading ? "Saving…" : "Save changes"}
                     </Button>
                   </Stack>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <Paper elevation={0} sx={{ ...cardSx, height: "100%" }}>
-                  <Typography variant="overline" sx={{ color: "#6f7f77", letterSpacing: 1.2, fontWeight: 600 }}>
-                    Role
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: alpha("#1f2a24", 0.72), mb: 2, mt: 0.5 }}>
-                    Choose a role, then apply. Changes take effect immediately for new sessions.
-                  </Typography>
-                  <ToggleButtonGroup
-                    exclusive
-                    orientation="vertical"
-                    fullWidth
-                    value={roleDraft}
-                    disabled={!canManageUser || actionLoading}
-                    onChange={(_, next) => {
-                      if (next != null) setRoleDraft(String(next));
-                    }}
-                    sx={{
-                      gap: 1,
-                      "& .MuiToggleButtonGroup-grouped": {
-                        border: 0,
-                        borderRadius: "12px !important",
-                        my: 0,
-                      },
-                    }}
-                  >
-                    {ROLE_OPTIONS.map((opt) => (
-                      <ToggleButton
-                        key={opt.value}
-                        value={opt.value}
-                        sx={{
-                          textTransform: "none",
-                          alignItems: "flex-start",
-                          py: 1.5,
-                          px: 2,
-                          border: `1px solid ${alpha(forest, 0.12)} !important`,
-                          bgcolor: alpha(forest, 0.02),
-                          "&.Mui-selected": {
-                            bgcolor: alpha(accent, 0.12),
-                            borderColor: `${alpha(accent, 0.55)} !important`,
-                            boxShadow: `inset 0 0 0 1px ${alpha(accent, 0.35)}`,
-                          },
-                          "&.Mui-disabled": { opacity: 0.55 },
-                        }}
-                      >
-                        <Stack alignItems="flex-start" spacing={0.25} sx={{ width: "100%" }}>
-                          <Typography sx={{ fontWeight: 800, color: "#19271f", fontSize: 15 }}>{opt.label}</Typography>
-                          <Typography variant="caption" sx={{ color: "#6f7f77", textAlign: "left", lineHeight: 1.35 }}>
-                            {opt.hint}
-                          </Typography>
-                        </Stack>
-                      </ToggleButton>
-                    ))}
-                  </ToggleButtonGroup>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={updateUserRole}
-                    disabled={!canManageUser || actionLoading || !roleDraft || roleDraft === String(user?.role ?? "")}
-                    sx={{
-                      mt: 2,
-                      textTransform: "none",
-                      fontWeight: 800,
-                      py: 1.25,
-                      borderRadius: 2,
-                      bgcolor: accent,
-                      boxShadow: "none",
-                      "&:hover": { bgcolor: "#8f723c", boxShadow: "0 6px 18px rgba(171, 138, 72, 0.35)" },
-                    }}
-                  >
-                    Save role
-                  </Button>
-                </Paper>
-              </Grid>
-            </Grid>
+                </>
+              ) : null}
+            </Paper>
           </Stack>
         ) : null}
       </Box>
