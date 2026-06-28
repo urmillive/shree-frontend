@@ -3,6 +3,7 @@ import { Box, CircularProgress, IconButton, Stack, Typography, useMediaQuery } f
 import { useTheme } from "@mui/material/styles";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { colors, fonts } from "../../theme/theme";
+import { getApiErrorMessage } from "../../utils/apiError";
 import {
   fetchHomepageBannersByPlacement,
   getBannerDesktopImageUrl,
@@ -40,12 +41,7 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
         setCurrentIndex(0);
       } catch (err) {
         if (cancelled) return;
-        setError(
-          err?.response?.data?.error?.message ||
-            err?.response?.data?.message ||
-            err?.message ||
-            "Could not load banners."
-        );
+        setError(getApiErrorMessage(err, "Could not load banners."));
         setBanners([]);
       } finally {
         if (!cancelled) setLoading(false);

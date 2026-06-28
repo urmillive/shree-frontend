@@ -34,7 +34,7 @@ export default function CategorySidebar({
           const selected = selectedCategoryId === category._id;
           return (
             <ListItemButton
-              key={category._id ?? category.id}
+              key={category._id}
               selected={selected}
               onClick={() => onSelect(category)}
               sx={{

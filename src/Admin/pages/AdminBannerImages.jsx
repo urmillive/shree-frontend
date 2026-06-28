@@ -4,6 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { useNavigate, useParams } from "react-router-dom";
 import client from "../../Setup/Axios";
 import AdminBreadcrumb from "../components/AdminBreadcrumb";
+import { getApiErrorMessage } from "../../utils/apiError";
 import AdminNavbar from "../components/AdminNavbar";
 
 const pageBg = "#ffffff";
@@ -105,7 +106,7 @@ const AdminBannerImages = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to load banner.",
+        message: getApiErrorMessage(error, "Failed to load banner."),
       });
     } finally {
       setLoading(false);
@@ -154,7 +155,7 @@ const AdminBannerImages = () => {
     } catch (error) {
       setFeedback({
         type: "error",
-        message: error?.response?.data?.message || error?.message || "Failed to upload and confirm image.",
+        message: getApiErrorMessage(error, "Failed to upload and confirm image."),
       });
     } finally {
       setLoadingUpload(false);

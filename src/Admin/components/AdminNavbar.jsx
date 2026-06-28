@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Alert, Avatar, Box, Button, Snackbar, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Button, Stack, Typography } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { FiGrid, FiLogOut } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
+import { useToast } from "../../context/ToastContext";
 
 const accent = "#ab8a48";
 
@@ -12,7 +13,7 @@ const AdminNavbar = () => {
   const location = useLocation();
   const displayName = localStorage.getItem("user_display_name") || "Admin";
   const [loggingOut, setLoggingOut] = useState(false);
-  const [toast, setToast] = useState({ open: false, severity: "success", message: "" });
+  const { showSuccess, showWarning } = useToast();
 
   const showDashboardButton = location.pathname !== "/admin/dashboard";
 
@@ -20,13 +21,9 @@ const AdminNavbar = () => {
     setLoggingOut(true);
     try {
       await client.post("/auth/logout", {});
-      setToast({ open: true, severity: "success", message: "Logged out successfully." });
+      showSuccess("Logged out successfully.");
     } catch {
-      setToast({
-        open: true,
-        severity: "warning",
-        message: "Session ended locally. Redirecting to login...",
-      });
+      showWarning("Session ended locally. Redirecting to login...");
     } finally {
       clearStoredAccessToken();
       setLoggingOut(false);
@@ -156,22 +153,6 @@ const AdminNavbar = () => {
           </Button>
         </Stack>
       </Stack>
-
-      <Snackbar
-        open={toast.open}
-        autoHideDuration={2200}
-        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-        anchorOrigin={{ vertical: "top", horizontal: "right" }}
-      >
-        <Alert
-          onClose={() => setToast((prev) => ({ ...prev, open: false }))}
-          severity={toast.severity}
-          variant="filled"
-          sx={{ width: "100%" }}
-        >
-          {toast.message}
-        </Alert>
-      </Snackbar>
     </>
   );
 };
