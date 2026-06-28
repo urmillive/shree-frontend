@@ -19,10 +19,6 @@ const normalizeBannerPayload = (payload) => {
   return null;
 };
 
-const getUploadPayload = (payload) => payload?.data ?? payload;
-
-const extractUploadKey = (payload) => payload?.key || payload?.imageKey || payload?.upload?.key || "";
-
 const ImageCard = ({ title, imageUrl, imageKey, selectedFile, onSelectFile, loading, onUpload }) => (
   <Paper
     elevation={0}
@@ -129,24 +125,14 @@ const AdminBannerImages = () => {
     setLoadingUpload(true);
     setFeedback({ type: "", message: "" });
     try {
-      const fileName = file.name || `banner-${Date.now()}.jpg`;
-      const contentType = file.type || "image/jpeg";
-      const uploadResponse = await client.post(`/admin/banners/${encodeURIComponent(bannerId.trim())}/upload-url`, {
-        contentType,
-        fileName,
-        isMobile: Boolean(isMobile),
-      });
-
-      const uploadPayload = getUploadPayload(uploadResponse.data);
-      const key = extractUploadKey(uploadPayload);
-      if (!key) {
-        throw new Error("Upload response is missing image key.");
-      }
-
-      await client.post(`/admin/banners/${encodeURIComponent(bannerId.trim())}/image-confirm`, {
-        key: String(key).trim(),
-        isMobile: Boolean(isMobile),
-      });
+      const form = new FormData();
+      form.append("file", file);
+      form.append("isMobile", String(Boolean(isMobile)));
+      await client.post(
+        `/admin/banners/${encodeURIComponent(bannerId.trim())}/image`,
+        form,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
 
       if (isMobile) setMobileFile(null);
       else setDesktopFile(null);

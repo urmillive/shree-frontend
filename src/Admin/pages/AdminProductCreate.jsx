@@ -176,28 +176,6 @@ function normalizeProductPayload(payload) {
   return root;
 }
 
-async function getProductImageUploadUrl(productId, payload) {
-  const { data } = await client.post(`/admin/products/${productId}/upload-url`, payload);
-  return data?.data !== undefined ? data.data : data;
-}
-
-// async function uploadProductImageToS3(uploadUrl, file) {
-//   const response = await fetch(uploadUrl, {
-//     method: "PUT",
-//     headers: { "Content-Type": file.type || "application/octet-stream" },
-//     body: file,
-//   });
-//   if (!response.ok) {
-//     throw new Error("Failed to upload image to S3.");
-//   }
-//   return true;
-// }
-
-async function confirmProductImageUpload(productId, payload) {
-  const { data } = await client.post(`/admin/products/${productId}/image-confirm`, payload);
-  return normalizeProductPayload(data);
-}
-
 async function deleteProductImage(productId, key) {
   const encodedKey = encodeURIComponent(key);
   const { data } = await client.delete(`/admin/products/${productId}/images/${encodedKey}`);
@@ -208,25 +186,17 @@ function newStagingId() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-/** Upload one file via presigned URL + confirm; returns normalized product payload (or null). */
+/** Single-step multipart upload to /admin/products/:id/images. Returns normalized product. */
 async function uploadOneFileToProduct(productId, file, displayOrder) {
-  const uploadPayload = {
-    contentType: file.type || "application/octet-stream",
-    fileName: file.name || `product-image-${Date.now()}.jpg`,
-  };
-  const uploadData = await getProductImageUploadUrl(productId, uploadPayload);
-  const uploadUrl = uploadData?.uploadUrl;
-  const key = uploadData?.key;
-
-  if (!uploadUrl || !key) {
-    throw new Error("Upload URL response is missing uploadUrl or key.");
-  }
-
-  // await uploadProductImageToS3(uploadUrl, file);
-  return confirmProductImageUpload(productId, {
-    key,
-    displayOrder: Number(displayOrder),
-  });
+  const form = new FormData();
+  form.append("file", file);
+  form.append("displayOrder", String(Number(displayOrder) || 0));
+  const { data } = await client.post(
+    `/admin/products/${encodeURIComponent(productId)}/images`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return normalizeProductPayload(data);
 }
 
 const AdminProductCreate = () => {
