@@ -14,7 +14,7 @@ import {
 } from "@mui/material";
 import { FiAlertTriangle, FiMail, FiPhone } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
-import { useVerification } from "../../context/VerificationContext";
+import { useVerification } from "../../context/useVerification";
 import { colors, primaryAlpha } from "../../theme/theme";
 
 const dialogPaperSx = {

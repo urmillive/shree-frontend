@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -81,7 +81,7 @@ const AdminCategoryGridSectionCreate = () => {
     [categoryOptions, existingCategorySet],
   );
 
-  const loadSection = async () => {
+  const loadSection = useCallback(async () => {
     if (!sectionId) return;
     setLoadingSection(true);
     setFeedback({ type: "", message: "" });
@@ -113,7 +113,7 @@ const AdminCategoryGridSectionCreate = () => {
     } finally {
       setLoadingSection(false);
     }
-  };
+  }, [sectionId]);
 
   useEffect(() => {
     if (!isAdminAllowed) return;
@@ -126,7 +126,7 @@ const AdminCategoryGridSectionCreate = () => {
       setMarkedForRemoval([]);
       setLoadingSection(false);
     }
-  }, [isAdminAllowed, sectionId, isEdit]);
+  }, [isAdminAllowed, sectionId, isEdit, loadSection]);
 
   useEffect(() => {
     if (!isAdminAllowed) return;

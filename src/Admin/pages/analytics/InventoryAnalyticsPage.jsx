@@ -11,7 +11,7 @@ import { useAdminTableSort } from "../../hooks/useAdminTableSort";
 import { exportListToCsv } from "../../utils/exportAdminListCsv";
 import { fetchInventoryReport } from "../../services/analyticsService";
 import { getApiErrorMessage } from "../../../utils/apiError";
-import { formatCount, formatCurrency } from "./AnalyticsShared";
+import { formatCount, formatCurrency } from "./analyticsFormatters";
 import { getAnalyticsSortValue, useClientPagedSortedRows } from "./analyticsListUtils";
 
 const TABLE_COLUMNS = [

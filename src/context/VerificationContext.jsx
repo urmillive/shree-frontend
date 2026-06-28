@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
@@ -12,8 +10,7 @@ import client, {
   getStoredCustomerAccessToken,
   getStoredRole,
 } from "../Setup/Axios";
-
-const VerificationContext = createContext(null);
+import { VerificationContext } from "./useVerification";
 
 const DISMISS_SESSION_KEY = "shree:verification-warning-dismissed";
 
@@ -143,10 +140,3 @@ export function VerificationProvider({ children }) {
   return <VerificationContext.Provider value={value}>{children}</VerificationContext.Provider>;
 }
 
-export function useVerification() {
-  const context = useContext(VerificationContext);
-  if (!context) {
-    throw new Error("useVerification must be used within VerificationProvider.");
-  }
-  return context;
-}

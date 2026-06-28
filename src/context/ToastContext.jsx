@@ -1,11 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Snackbar } from "@mui/material";
 import {
   registerErrorToastHandler,
   registerSuccessToastHandler,
 } from "../utils/errorToastBridge";
-
-const ToastContext = createContext(null);
+import { ToastContext } from "./useToast";
 
 const DEFAULT_DURATION = 4200;
 
@@ -106,10 +105,3 @@ export function ToastProvider({ children }) {
   );
 }
 
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (!context) {
-    throw new Error("useToast must be used within ToastProvider.");
-  }
-  return context;
-}

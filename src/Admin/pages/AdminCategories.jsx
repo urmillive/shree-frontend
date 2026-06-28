@@ -10,7 +10,7 @@ import AdminMergedSearchField from "../components/AdminMergedSearchField";
 import AdminRowSelectCell from "../components/AdminRowSelectCell";
 import { accent, pageBg } from "../components/adminListTheme";
 import { getApiErrorMessage } from "../../utils/apiError";
-import { fetchAdminCategories, flattenCategories, normalizeCategoryListPayload } from "../services/adminCategoriesService";
+import { fetchAdminCategories, flattenCategories } from "../services/adminCategoriesService";
 import { useAdminMergedSearch } from "../hooks/useAdminMergedSearch";
 import { useAdminRowSelection } from "../hooks/useAdminRowSelection";
 import { sortRows, useAdminTableSort } from "../hooks/useAdminTableSort";

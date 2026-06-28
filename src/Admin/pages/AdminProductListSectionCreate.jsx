@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -88,7 +88,7 @@ const AdminProductListSectionCreate = () => {
     [productOptions, existingProductSet],
   );
 
-  const loadSection = async () => {
+  const loadSection = useCallback(async () => {
     if (!sectionId) return;
     setLoadingSection(true);
     setFeedback({ type: "", message: "" });
@@ -120,7 +120,7 @@ const AdminProductListSectionCreate = () => {
     } finally {
       setLoadingSection(false);
     }
-  };
+  }, [sectionId]);
 
   useEffect(() => {
     if (!isAdminAllowed) return;
@@ -133,7 +133,7 @@ const AdminProductListSectionCreate = () => {
       setMarkedForRemoval([]);
       setLoadingSection(false);
     }
-  }, [isAdminAllowed, sectionId, isEdit]);
+  }, [isAdminAllowed, sectionId, isEdit, loadSection]);
 
   useEffect(() => {
     if (!isAdminAllowed) return;

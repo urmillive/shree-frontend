@@ -14,7 +14,7 @@ import { useAdminTableSort } from "../../hooks/useAdminTableSort";
 import { exportListToCsv } from "../../utils/exportAdminListCsv";
 import { fetchRevenueReport } from "../../services/analyticsService";
 import { getApiErrorMessage } from "../../../utils/apiError";
-import { formatCount, formatCurrency } from "./AnalyticsShared";
+import { formatCount, formatCurrency } from "./analyticsFormatters";
 import { buildDateFilterChips, getAnalyticsDefaultDateRange, getAnalyticsSortValue, useClientPagedSortedRows } from "./analyticsListUtils";
 
 const { from: DEFAULT_FROM, to: DEFAULT_TO } = getAnalyticsDefaultDateRange();

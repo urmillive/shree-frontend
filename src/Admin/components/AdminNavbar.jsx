@@ -4,7 +4,7 @@ import { alpha } from "@mui/material/styles";
 import { FiGrid, FiLogOut } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
 import client, { clearStoredAccessToken } from "../../Setup/Axios";
-import { useToast } from "../../context/ToastContext";
+import { useToast } from "../../context/useToast";
 
 const accent = "#ab8a48";
 
