@@ -22,12 +22,12 @@ import {
 import { useCart } from "../context/useCart";
 import { loadRazorpayScript } from "../services/loadRazorpayScript";
 import {
+  initiateRazorpayPayment,
   normalizeCustomerOrderPayload,
+  normalizeInitiatePaymentPayload,
   pickCustomerOrderNumber,
-  pickRazorpayAmountPaise,
-  pickRazorpayOrderId,
-  pickRazorpayPublicKey,
   placeCustomerOrder,
+  verifyRazorpayPayment,
 } from "../services/publicOrdersService";
 
 const INR = new Intl.NumberFormat("en-IN", {
@@ -140,29 +140,35 @@ export default function Checkout() {
     async (createdOrder) => {
       const order =
         normalizeCustomerOrderPayload(createdOrder) ?? createdOrder;
-      const key = pickRazorpayPublicKey(order);
       const orderNum = pickCustomerOrderNumber(order);
-      const rpOrderId = pickRazorpayOrderId(order);
-      const amountPaise = pickRazorpayAmountPaise(
-        order,
-        cart.totals.grandTotal
-      );
-      const ro = order?.razorpayOrder ?? order?.razorpay_order ?? {};
-      const currency =
-        typeof ro.currency === "string" && ro.currency.trim()
-          ? ro.currency
-          : "INR";
+
+      if (!orderNum) {
+        setSubmitError("Could not read order number from the server.");
+        return;
+      }
+
+      const initiateResp = await initiateRazorpayPayment(orderNum);
+      const initiated = normalizeInitiatePaymentPayload(initiateResp?.data);
+      if (!initiated) {
+        setSubmitError("Could not initiate online payment.");
+        return;
+      }
+      const key =
+        initiated.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID || "";
+      const rpOrderId = initiated.razorpayOrderId;
+      const amountPaise = Number.isFinite(initiated.amount) && initiated.amount > 0
+        ? Math.round(initiated.amount)
+        : Math.round(Number(cart.totals.grandTotal || 0) * 100);
+      const currency = initiated.currency || "INR";
 
       if (!key) {
         setSubmitError(
-          "Razorpay key is missing. Set VITE_RAZORPAY_KEY_ID or ask your API to return it on the order."
+          "Razorpay key is missing. Set RAZORPAY_KEY_ID on the server or VITE_RAZORPAY_KEY_ID on the client."
         );
         return;
       }
       if (!rpOrderId) {
-        setSubmitError(
-          "Could not read Razorpay order id from the server response."
-        );
+        setSubmitError("Could not read Razorpay order id from the server response.");
         return;
       }
       if (!amountPaise) {
@@ -179,13 +185,24 @@ export default function Checkout() {
         name: "Shree Gallery",
         description: orderNum ? `Order ${orderNum}` : "Checkout",
         order_id: rpOrderId,
-        handler() {
-          void reloadCart();
-          if (orderNum)
-            navigate(`/orders/${encodeURIComponent(orderNum)}`, {
-              replace: true,
+        handler: async (response) => {
+          try {
+            await verifyRazorpayPayment({
+              orderNumber: orderNum,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
             });
-          else navigate("/orders", { replace: true });
+          } catch (verifyErr) {
+            setSubmitError(
+              verifyErr?.response?.data?.error?.message ||
+                verifyErr?.message ||
+                "Payment captured but server verification failed. Contact support with your order number."
+            );
+            return;
+          }
+          await reloadCart();
+          navigate(`/orders/${encodeURIComponent(orderNum)}`, { replace: true });
         },
         prefill: {
           name: prefill.name || undefined,
