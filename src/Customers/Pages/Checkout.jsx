@@ -182,7 +182,7 @@ export default function Checkout() {
         key,
         amount: amountPaise,
         currency,
-        name: "Shree Gallery",
+        name: "Shree Gallary",
         description: orderNum ? `Order ${orderNum}` : "Checkout",
         order_id: rpOrderId,
         handler: async (response) => {

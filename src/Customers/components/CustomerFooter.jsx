@@ -11,6 +11,7 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { FiInstagram, FiTwitter } from "react-icons/fi";
 import { colors, fonts } from "../../theme/theme";
+import logoMark from "../../assets/logo-mark.svg";
 
 const linkSx = {
   color: colors.muted,
@@ -68,9 +69,18 @@ const CustomerFooter = () => {
           sx={{ pb: { xs: 5, sm: 7 } }}
         >
           <Grid size={{ xs: 12, md: 6 }}>
-            <Typography component="div" sx={wordmarkSx}>
-              Shree Gallery
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Box
+                component="img"
+                src={logoMark}
+                alt=""
+                aria-hidden="true"
+                sx={{ height: 34, width: "auto", display: "block", mr: 1.25 }}
+              />
+              <Typography component="div" sx={wordmarkSx}>
+                Shree Gallary
+              </Typography>
+            </Box>
             <Typography
               sx={{
                 mt: 2.5,
@@ -80,8 +90,8 @@ const CustomerFooter = () => {
                 lineHeight: 1.7,
               }}
             >
-              Modern Indian fashion. Considered craft, editorial drops, and a
-              shopping experience built with care.
+              Fine and imitation jewellery, clothing, and more — curated craft
+              and a shopping experience built with care.
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -230,7 +240,7 @@ const CustomerFooter = () => {
             <Typography
               sx={{ mt: 3, color: colors.muted, fontSize: 13, lineHeight: 1.7 }}
             >
-              Shree Gallery
+              Shree Gallary
               <br />
               India · Worldwide shipping
             </Typography>
@@ -253,7 +263,7 @@ const CustomerFooter = () => {
               letterSpacing: "0.04em",
             }}
           >
-            © {year} Shree Gallery. All rights reserved.
+            © {year} Shree Gallary. All rights reserved.
           </Typography>
           <Stack
             direction="row"

@@ -14,7 +14,7 @@ const pillars = [
   {
     label: "Considered Craft",
     body:
-      "Every piece is made in small runs with artisans who care. No fast-fashion shortcuts.",
+      "Jewellery, imitation pieces, and clothing chosen with care — quality you can trust, every time.",
   },
   {
     label: "Free Shipping",

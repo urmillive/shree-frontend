@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { FiHeart, FiMenu, FiShoppingBag, FiUser, FiX } from "react-icons/fi";
 import { MdExpandMore } from "react-icons/md";
+import logoMark from "../../assets/logo-mark.svg";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import client, {
   clearStoredAccessToken,
