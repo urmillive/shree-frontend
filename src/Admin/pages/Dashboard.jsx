@@ -138,7 +138,7 @@ const Dashboard = () => {
             {greeting}, {displayName}
           </Typography>
           <Typography sx={{ color: "#4f5d56", fontSize: { xs: 15, sm: 16 }, maxWidth: 560, mt: 0.5 }}>
-            Manage all Shree Fashion backend modules from one place.
+            Manage all Shree Gallary backend modules from one place.
           </Typography>
           <Typography
             variant="overline"

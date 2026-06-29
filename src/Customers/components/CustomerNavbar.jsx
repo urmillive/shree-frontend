@@ -403,7 +403,7 @@ const CustomerNavbar = () => {
         sx={{ px: 2.5, pb: 2 }}
       >
         <Typography sx={{ ...wordmarkSx, fontSize: 14 }}>
-          Shree Gallery
+          Shree Gallary
         </Typography>
         <IconButton onClick={closeDrawer} aria-label="Close menu" size="small">
           <FiX size={20} />
@@ -602,7 +602,7 @@ const CustomerNavbar = () => {
             }}
           >
             <Typography component="span" sx={wordmarkSx}>
-              Shree Gallery
+              Shree Gallary
             </Typography>
           </Box>
 

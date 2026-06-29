@@ -61,11 +61,11 @@ const AdminNavbar = () => {
               boxShadow: `0 8px 20px ${alpha("#2d5b45", 0.2)}`,
             }}
           >
-            <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 15, letterSpacing: -0.5 }}>S</Typography>
+            <Typography sx={{ color: "#fff", fontWeight: 800, fontSize: 14, letterSpacing: -0.5 }}>SG</Typography>
           </Box>
           <Box>
             <Typography sx={{ color: "#1c2c24", fontWeight: 700, fontSize: { xs: 15, sm: 16 }, lineHeight: 1.2 }}>
-              Shree Fashion
+              Shree Gallary
             </Typography>
           </Box>
         </Stack>

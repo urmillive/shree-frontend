@@ -69,7 +69,7 @@ const CustomerFooter = () => {
         >
           <Grid size={{ xs: 12, md: 6 }}>
             <Typography component="div" sx={wordmarkSx}>
-              Shree Gallery
+              Shree Gallary
             </Typography>
             <Typography
               sx={{
@@ -80,8 +80,8 @@ const CustomerFooter = () => {
                 lineHeight: 1.7,
               }}
             >
-              Modern Indian fashion. Considered craft, editorial drops, and a
-              shopping experience built with care.
+              Fine and imitation jewellery, clothing, and more — curated craft
+              and a shopping experience built with care.
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -230,7 +230,7 @@ const CustomerFooter = () => {
             <Typography
               sx={{ mt: 3, color: colors.muted, fontSize: 13, lineHeight: 1.7 }}
             >
-              Shree Gallery
+              Shree Gallary
               <br />
               India · Worldwide shipping
             </Typography>
@@ -253,7 +253,7 @@ const CustomerFooter = () => {
               letterSpacing: "0.04em",
             }}
           >
-            © {year} Shree Gallery. All rights reserved.
+            © {year} Shree Gallary. All rights reserved.
           </Typography>
           <Stack
             direction="row"

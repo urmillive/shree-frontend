@@ -120,7 +120,7 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
               mb: 1.5,
             }}
           >
-            Shree Gallery
+            Shree Gallary
           </Typography>
           <Typography
             component="h1"
@@ -134,9 +134,9 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
               mb: 2,
             }}
           >
-            Considered fashion,
+            Jewellery, clothing
             <br />
-            crafted slow.
+            &amp; everyday luxe.
           </Typography>
           <Typography sx={{ color: colors.muted, fontSize: 13.5 }}>
             {error || "Editorial banners will appear here soon."}
