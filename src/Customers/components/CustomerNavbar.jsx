@@ -23,6 +23,7 @@ import {
 } from "@mui/material";
 import { FiHeart, FiMenu, FiShoppingBag, FiUser, FiX } from "react-icons/fi";
 import { MdExpandMore } from "react-icons/md";
+import logoMark from "../../assets/logo-mark.svg";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
 import client, {
   clearStoredAccessToken,
@@ -402,9 +403,18 @@ const CustomerNavbar = () => {
         justifyContent="space-between"
         sx={{ px: 2.5, pb: 2 }}
       >
-        <Typography sx={{ ...wordmarkSx, fontSize: 14 }}>
-          Shree Gallary
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+          <Box
+            component="img"
+            src={logoMark}
+            alt=""
+            aria-hidden="true"
+            sx={{ height: 24, width: "auto", display: "block", mr: 1 }}
+          />
+          <Typography sx={{ ...wordmarkSx, fontSize: 14 }}>
+            Shree Gallary
+          </Typography>
+        </Box>
         <IconButton onClick={closeDrawer} aria-label="Close menu" size="small">
           <FiX size={20} />
         </IconButton>
@@ -601,6 +611,13 @@ const CustomerNavbar = () => {
               mr: { md: 0 },
             }}
           >
+            <Box
+              component="img"
+              src={logoMark}
+              alt=""
+              aria-hidden="true"
+              sx={{ height: { xs: 28, sm: 32 }, width: "auto", display: "block", mr: { xs: 1, sm: 1.25 } }}
+            />
             <Typography component="span" sx={wordmarkSx}>
               Shree Gallary
             </Typography>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
+import logo from "../../assets/logo.svg";
 import {
   Alert,
   Box,
@@ -127,6 +128,19 @@ const Login = () => {
         sx={{ maxWidth: 460, px: { xs: 3, sm: 5 }, py: { xs: 6, sm: 10 } }}
       >
         <Stack spacing={1.5} sx={{ textAlign: "center", mb: 5 }}>
+          <Box
+            component={RouterLink}
+            to="/"
+            aria-label="Shree Gallary — home"
+            sx={{ display: "block", mb: 1 }}
+          >
+            <Box
+              component="img"
+              src={logo}
+              alt="Shree Gallary"
+              sx={{ height: { xs: 52, sm: 58 }, width: "auto", maxWidth: "100%", mx: "auto", display: "block" }}
+            />
+          </Box>
           <Typography sx={eyebrowSx}>Welcome back</Typography>
           <Typography
             component="h1"
