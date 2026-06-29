@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Box, CircularProgress, IconButton, Stack, Typography, useMediaQuery } from "@mui/material";
+import { Box, CircularProgress, IconButton, Stack, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { colors, fonts } from "../../theme/theme";
+import { colors } from "../../theme/theme";
 import { getApiErrorMessage } from "../../utils/apiError";
 import {
   fetchHomepageBannersByPlacement,
@@ -78,14 +78,12 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     return () => window.clearInterval(timer);
   }, [total, goNext]);
 
-  const heroHeight = { xs: 480, sm: 600, md: 680 };
-
   if (loading) {
     return (
       <Box
         component="section"
         sx={{
-          minHeight: heroHeight,
+          minHeight: { xs: 200, sm: 300 },
           display: "grid",
           placeItems: "center",
           bgcolor: colors.stone,
@@ -96,242 +94,123 @@ const HomepageBannerSlider = ({ placement = "hero" }) => {
     );
   }
 
-  if (error || !activeBanner) {
-    return (
-      <Box
-        component="section"
-        sx={{
-          minHeight: { xs: 380, sm: 480 },
-          display: "grid",
-          placeItems: "center",
-          bgcolor: colors.stone,
-          px: 3,
-          textAlign: "center",
-        }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontFamily: fonts.body,
-              fontSize: 11,
-              letterSpacing: "0.28em",
-              textTransform: "uppercase",
-              color: colors.muted,
-              mb: 1.5,
-            }}
-          >
-            Shree Gallery
-          </Typography>
-          <Typography
-            component="h1"
-            sx={{
-              fontFamily: fonts.display,
-              fontSize: { xs: 36, sm: 56 },
-              fontWeight: 500,
-              color: colors.ink,
-              letterSpacing: "-0.01em",
-              lineHeight: 1.05,
-              mb: 2,
-            }}
-          >
-            Considered fashion,
-            <br />
-            crafted slow.
-          </Typography>
-          <Typography sx={{ color: colors.muted, fontSize: 13.5 }}>
-            {error || "Editorial banners will appear here soon."}
-          </Typography>
-        </Box>
-      </Box>
-    );
-  }
+  if (error || !activeBanner) return null;
 
-  const preferred = isMobile
-    ? getBannerMobileImageUrl(activeBanner)
-    : getBannerDesktopImageUrl(activeBanner);
-  const fallback = isMobile
-    ? getBannerDesktopImageUrl(activeBanner)
-    : getBannerMobileImageUrl(activeBanner);
-  const imageUrl = preferred || fallback;
+  const desktopUrl = getBannerDesktopImageUrl(activeBanner);
+  const mobileUrl = getBannerMobileImageUrl(activeBanner);
+  const imageUrl = isMobile
+    ? mobileUrl || desktopUrl
+    : desktopUrl || mobileUrl;
+
   const targetUrl = getBannerTargetUrl(activeBanner);
-  const title = activeBanner?.title ? String(activeBanner.title) : "";
-  const subtitle = activeBanner?.subtitle ? String(activeBanner.subtitle) : "";
+  const altText = activeBanner?.title ? String(activeBanner.title) : "Banner";
+
+  if (!imageUrl) return null;
 
   return (
-    <Box component="section" sx={{ position: "relative" }}>
-      <Box sx={{ position: "relative", overflow: "hidden", bgcolor: colors.stone }}>
+    <Box
+      component="section"
+      sx={{ position: "relative", width: "100%", lineHeight: 0 }}
+    >
+      <Box
+        component={targetUrl ? "a" : "div"}
+        href={targetUrl || undefined}
+        sx={{
+          display: "block",
+          textDecoration: "none",
+          width: "100%",
+          position: "relative",
+        }}
+      >
         <Box
-          component={targetUrl ? "a" : "div"}
-          href={targetUrl || undefined}
+          component="img"
+          src={imageUrl}
+          alt={altText}
           sx={{
+            width: "100%",
+            height: "auto",
             display: "block",
-            textDecoration: "none",
-            color: "inherit",
-            position: "relative",
+            maxWidth: "100%",
           }}
-        >
-          <Box
-            component="img"
-            src={imageUrl}
-            alt={title || "Editorial banner"}
-            sx={{
-              width: "100%",
-              height: heroHeight,
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
+        />
+      </Box>
 
-          {/* Editorial overlay */}
-          <Box
+      {total > 1 ? (
+        <>
+          <IconButton
+            onClick={goPrev}
+            aria-label="Previous banner"
             sx={{
               position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.25) 100%)",
-              pointerEvents: "none",
+              left: { xs: 8, sm: 24 },
+              top: "50%",
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(255,255,255,0.15)",
+              backdropFilter: "blur(4px)",
+              color: colors.ivory,
+              border: `1px solid rgba(255,255,255,0.4)`,
+              width: { xs: 36, sm: 44 },
+              height: { xs: 36, sm: 44 },
+              borderRadius: 0,
+              "&:hover": {
+                bgcolor: colors.ivory,
+                color: colors.ink,
+              },
             }}
-          />
+          >
+            <FiChevronLeft size={18} />
+          </IconButton>
+          <IconButton
+            onClick={goNext}
+            aria-label="Next banner"
+            sx={{
+              position: "absolute",
+              right: { xs: 8, sm: 24 },
+              top: "50%",
+              transform: "translateY(-50%)",
+              bgcolor: "rgba(255,255,255,0.15)",
+              backdropFilter: "blur(4px)",
+              color: colors.ivory,
+              border: `1px solid rgba(255,255,255,0.4)`,
+              width: { xs: 36, sm: 44 },
+              height: { xs: 36, sm: 44 },
+              borderRadius: 0,
+              "&:hover": {
+                bgcolor: colors.ivory,
+                color: colors.ink,
+              },
+            }}
+          >
+            <FiChevronRight size={18} />
+          </IconButton>
 
-          {(title || subtitle) && (
-            <Box
-              sx={{
-                position: "absolute",
-                left: { xs: 24, sm: 48, md: 80 },
-                right: { xs: 24, sm: 48 },
-                bottom: { xs: 40, sm: 64, md: 88 },
-                color: colors.ivory,
-                maxWidth: 640,
-              }}
-            >
-              {subtitle ? (
-                <Typography
-                  sx={{
-                    fontFamily: fonts.body,
-                    fontSize: 11,
-                    letterSpacing: "0.28em",
-                    textTransform: "uppercase",
-                    fontWeight: 500,
-                    color: colors.ivory,
-                    opacity: 0.92,
-                    mb: 2,
-                  }}
-                >
-                  {subtitle}
-                </Typography>
-              ) : null}
-              {title ? (
-                <Typography
-                  component="h1"
-                  sx={{
-                    fontFamily: fonts.display,
-                    fontSize: { xs: 34, sm: 56, md: 72 },
-                    fontWeight: 500,
-                    color: colors.ivory,
-                    letterSpacing: "-0.01em",
-                    lineHeight: 1.05,
-                  }}
-                >
-                  {title}
-                </Typography>
-              ) : null}
-              {targetUrl ? (
-                <Typography
-                  sx={{
-                    mt: 3,
-                    fontFamily: fonts.body,
-                    fontSize: 11,
-                    letterSpacing: "0.28em",
-                    textTransform: "uppercase",
-                    fontWeight: 500,
-                    color: colors.ivory,
-                    display: "inline-block",
-                    borderBottom: `1px solid ${colors.ivory}`,
-                    pb: 0.5,
-                  }}
-                >
-                  Discover →
-                </Typography>
-              ) : null}
-            </Box>
-          )}
-        </Box>
-
-        {total > 1 ? (
-          <>
-            <IconButton
-              onClick={goPrev}
-              aria-label="Previous banner"
-              sx={{
-                position: "absolute",
-                left: { xs: 8, sm: 24 },
-                top: "50%",
-                transform: "translateY(-50%)",
-                bgcolor: "transparent",
-                color: colors.ivory,
-                border: `1px solid ${colors.ivory}`,
-                width: 40,
-                height: 40,
-                borderRadius: 0,
-                "&:hover": {
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              position: "absolute",
+              bottom: { xs: 10, sm: 16 },
+              left: "50%",
+              transform: "translateX(-50%)",
+            }}
+          >
+            {banners.map((_, i) => (
+              <Box
+                key={i}
+                onClick={() => setCurrentIndex(i)}
+                sx={{
+                  width: i === currentIndex ? 24 : 12,
+                  height: 2,
                   bgcolor: colors.ivory,
-                  color: colors.ink,
-                },
-              }}
-            >
-              <FiChevronLeft size={18} />
-            </IconButton>
-            <IconButton
-              onClick={goNext}
-              aria-label="Next banner"
-              sx={{
-                position: "absolute",
-                right: { xs: 8, sm: 24 },
-                top: "50%",
-                transform: "translateY(-50%)",
-                bgcolor: "transparent",
-                color: colors.ivory,
-                border: `1px solid ${colors.ivory}`,
-                width: 40,
-                height: 40,
-                borderRadius: 0,
-                "&:hover": {
-                  bgcolor: colors.ivory,
-                  color: colors.ink,
-                },
-              }}
-            >
-              <FiChevronRight size={18} />
-            </IconButton>
-
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{
-                position: "absolute",
-                bottom: 16,
-                left: "50%",
-                transform: "translateX(-50%)",
-              }}
-            >
-              {banners.map((_, i) => (
-                <Box
-                  key={i}
-                  onClick={() => setCurrentIndex(i)}
-                  sx={{
-                    width: i === currentIndex ? 24 : 12,
-                    height: 2,
-                    bgcolor: colors.ivory,
-                    opacity: i === currentIndex ? 1 : 0.5,
-                    cursor: "pointer",
-                    transition: "width 240ms cubic-bezier(0.2,0.7,0.2,1)",
-                  }}
-                />
-              ))}
-            </Stack>
-          </>
-        ) : null}
-      </Box>
+                  opacity: i === currentIndex ? 1 : 0.5,
+                  cursor: "pointer",
+                  transition: "width 240ms cubic-bezier(0.2,0.7,0.2,1)",
+                }}
+              />
+            ))}
+          </Stack>
+        </>
+      ) : null}
     </Box>
   );
 };

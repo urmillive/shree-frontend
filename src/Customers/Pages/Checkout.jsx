@@ -730,7 +730,7 @@ export default function Checkout() {
                         color: colors.ink,
                       }}
                     >
-                      Total
+                      Totalss
                     </Typography>
                     <Typography
                       sx={{

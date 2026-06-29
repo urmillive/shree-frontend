@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import {
   fetchPublicCategoryTree,
   getPublicCategoryImageUrl,
@@ -9,6 +9,10 @@ import {
   normalizePublicCategoryTreePayload,
 } from "../services/publicCategoriesService";
 import { colors, fonts } from "../../theme/theme";
+
+// Responsive card dimensions — 2 always visible on mobile, larger on desktop
+const CARD_W = { xs: "clamp(140px, 44vw, 260px)", sm: 280, md: 340 };
+const CARD_H = { xs: "clamp(140px, 44vw, 260px)", sm: 280, md: 340 };
 
 export function CategoryCircleItem({ node, subtitle = null, size = "default" }) {
   const slug = getPublicCategorySlug(node);
@@ -155,6 +159,94 @@ export function CategoryCircleItem({ node, subtitle = null, size = "default" }) 
   );
 }
 
+function CategoryCard({ node }) {
+  const slug = getPublicCategorySlug(node);
+  const name = getPublicCategoryName(node);
+  const imageUrl = getPublicCategoryImageUrl(node);
+  const initial = name.charAt(0).toUpperCase() || "?";
+
+  const cardContent = (
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        flexShrink: 0,
+        scrollSnapAlign: "start",
+        textDecoration: "none",
+        color: "inherit",
+        cursor: slug ? "pointer" : "default",
+        "&:hover .cat-card-img": { transform: "scale(1.04)" },
+        "&:hover .cat-card-name": { color: colors.wine },
+      }}
+      component={slug ? RouterLink : "div"}
+      {...(slug ? { to: `/categories/${encodeURIComponent(slug)}` } : {})}
+    >
+      <Box
+        sx={{
+          width: CARD_W,
+          height: CARD_H,
+          overflow: "hidden",
+          bgcolor: colors.stone,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {imageUrl ? (
+          <Box
+            className="cat-card-img"
+            component="img"
+            src={imageUrl}
+            alt={name}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transition: "transform 360ms cubic-bezier(0.2,0.7,0.2,1)",
+              display: "block",
+            }}
+          />
+        ) : (
+          <Typography
+            sx={{
+              fontFamily: fonts.display,
+              fontSize: "3.5rem",
+              fontWeight: 500,
+              color: colors.muted,
+              userSelect: "none",
+            }}
+          >
+            {initial}
+          </Typography>
+        )}
+      </Box>
+
+      <Typography
+        className="cat-card-name"
+        sx={{
+          mt: { xs: 1.5, sm: 2 },
+          fontFamily: fonts.body,
+          fontSize: { xs: 10, sm: 13 },
+          fontWeight: 700,
+          letterSpacing: { xs: "0.14em", sm: "0.22em" },
+          textTransform: "uppercase",
+          color: colors.ink,
+          textAlign: "center",
+          transition: "color 220ms",
+          lineHeight: 1.3,
+          px: { xs: 0.5, sm: 0 },
+        }}
+      >
+        {name}
+      </Typography>
+    </Box>
+  );
+
+  return cardContent;
+}
+
 export default function ShopCategoriesSection() {
   const scrollerRef = useRef(null);
   const [loading, setLoading] = useState(true);
@@ -223,52 +315,43 @@ export default function ShopCategoriesSection() {
     <Box
       component="section"
       id="shop-categories"
-      sx={{ py: { xs: 6, sm: 10 } }}
+      sx={{ py: { xs: 5, sm: 9 } }}
     >
-      <Stack
-        spacing={1}
-        sx={{ mb: { xs: 4, sm: 6 }, alignItems: "center", textAlign: "center" }}
+      {/* Heading */}
+      <Typography
+        component="h2"
+        sx={{
+          textAlign: "center",
+          fontFamily: fonts.body,
+          fontSize: { xs: 12, sm: 16 },
+          fontWeight: 700,
+          letterSpacing: "0.25em",
+          textTransform: "uppercase",
+          color: colors.ink,
+          mb: { xs: 3, sm: 6 },
+          lineHeight: 1.4,
+        }}
       >
-        <Typography
-          sx={{
-            fontFamily: fonts.body,
-            fontSize: 11,
-            letterSpacing: "0.28em",
-            textTransform: "uppercase",
-            color: colors.muted,
-            fontWeight: 500,
-          }}
-        >
-          The Edit
-        </Typography>
-        <Typography
-          component="h2"
-          sx={{
-            fontFamily: fonts.display,
-            fontSize: { xs: 32, sm: 44 },
-            fontWeight: 500,
-            color: colors.ink,
-            letterSpacing: "-0.01em",
-            lineHeight: 1.1,
-          }}
-        >
-          Shop by category
-        </Typography>
-      </Stack>
+        Explore Our{" "}
+        <Box component="span" sx={{ color: colors.wine }}>
+          Collections
+        </Box>
+      </Typography>
 
-      <Box sx={{ position: "relative", mx: { xs: -2, sm: -3 } }}>
+      {/* Cards scroller — 2 visible on mobile, scrollable if many categories */}
+      <Box sx={{ position: "relative" }}>
         <Box
           ref={scrollerRef}
           sx={{
             display: "flex",
-            gap: { xs: 2.5, sm: 4 },
+            justifyContent: { xs: "flex-start", sm: "center" },
+            gap: { xs: 1.5, sm: 3 },
             overflowX: "auto",
             WebkitOverflowScrolling: "touch",
             touchAction: "pan-x",
             scrollSnapType: "x proximity",
             scrollBehavior: "smooth",
             pb: 1,
-            px: { xs: 2, sm: 3 },
             msOverflowStyle: "none",
             scrollbarWidth: "none",
             "&::-webkit-scrollbar": { display: "none" },
@@ -276,19 +359,33 @@ export default function ShopCategoriesSection() {
         >
           {mainCategories.map((node, idx) => {
             const key = getPublicCategorySlug(node) || `cat-${idx}`;
-            return <CategoryCircleItem key={key} node={node} />;
+            return <CategoryCard key={key} node={node} />;
           })}
         </Box>
       </Box>
 
-      <Box sx={{ display: "flex", justifyContent: "center", mt: 5 }}>
+      {/* CTA button */}
+      <Box sx={{ display: "flex", justifyContent: "center", mt: { xs: 4, sm: 6 } }}>
         <Button
           component={RouterLink}
           to="/categories"
-          variant="outlined"
-          size="medium"
+          sx={{
+            bgcolor: colors.wine,
+            color: "#fff",
+            fontFamily: fonts.body,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.22em",
+            textTransform: "uppercase",
+            px: { xs: 4, sm: 5 },
+            py: 1.5,
+            borderRadius: "2px",
+            "&:hover": {
+              bgcolor: "#8a2535",
+            },
+          }}
         >
-          View all categories
+          View All Categories
         </Button>
       </Box>
     </Box>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Autocomplete,
@@ -66,6 +66,7 @@ const AdminCategoryGridSectionCreate = () => {
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: "", message: "" });
+  const originalFormRef = useRef(null);
 
   const existingCategoryIds = useMemo(
     () => (Array.isArray(section?.categoryIds) ? section.categoryIds.map((id) => String(id)) : []),
@@ -99,12 +100,14 @@ const AdminCategoryGridSectionCreate = () => {
         return;
       }
       setSection(fetched);
-      setForm({
+      const mappedForm = {
         title: fetched?.title || "",
         subtitle: fetched?.subtitle || "",
         displayOrder: fetched?.displayOrder ?? 0,
         isActive: Boolean(fetched?.isActive),
-      });
+      };
+      setForm(mappedForm);
+      originalFormRef.current = mappedForm;
       setSelectedCategories([]);
       setMarkedForRemoval([]);
     } catch (error) {
@@ -176,12 +179,21 @@ const AdminCategoryGridSectionCreate = () => {
         );
         const idsToRemove = Array.from(new Set(markedForRemoval.map((id) => String(id).trim()).filter(Boolean)));
 
-        await client.put(`/admin/sections/${encodeURIComponent(sectionId)}`, {
-          title: form.title.trim(),
-          subtitle: form.subtitle.trim(),
-          displayOrder: Number(form.displayOrder) || 0,
-          isActive: Boolean(form.isActive),
-        });
+        const orig = originalFormRef.current;
+        const newTitle = form.title.trim();
+        const newSubtitle = form.subtitle.trim();
+        const newOrder = Number(form.displayOrder) || 0;
+        const newActive = Boolean(form.isActive);
+
+        const sectionPayload = {};
+        if (!orig || newTitle !== (orig.title || "").trim()) sectionPayload.title = newTitle;
+        if (!orig || newSubtitle !== (orig.subtitle || "").trim()) sectionPayload.subtitle = newSubtitle;
+        if (!orig || newOrder !== (Number(orig.displayOrder) || 0)) sectionPayload.displayOrder = newOrder;
+        if (!orig || newActive !== Boolean(orig.isActive)) sectionPayload.isActive = newActive;
+
+        if (Object.keys(sectionPayload).length > 0) {
+          await client.put(`/admin/sections/${encodeURIComponent(sectionId)}`, sectionPayload);
+        }
 
         if (idsToAdd.length) {
           await client.post(`/admin/sections/${encodeURIComponent(sectionId)}/categories`, { ids: idsToAdd });

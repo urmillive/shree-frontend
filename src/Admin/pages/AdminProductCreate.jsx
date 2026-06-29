@@ -214,6 +214,7 @@ const AdminProductCreate = () => {
   /** Local queue: selected files not yet uploaded (shown before first save on create, or before "Upload all"). */
   const [stagingFiles, setStagingFiles] = useState([]);
   const imageFileInputRef = useRef(null);
+  const originalFormRef = useRef(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageError, setImageError] = useState("");
   const [imageSuccess, setImageSuccess] = useState("");
@@ -249,7 +250,9 @@ const AdminProductCreate = () => {
         setError("Product not found.");
         return;
       }
-      setForm(mapProductToForm(product));
+      const mappedForm = mapProductToForm(product);
+      setForm(mappedForm);
+      originalFormRef.current = mappedForm;
       const pid = pickProductId(product);
       setCreatedProductId(pid ? String(pid) : id);
       const nextImages = normalizeProductImages(product);
@@ -353,8 +356,6 @@ const AdminProductCreate = () => {
       variants,
     };
 
-    const flagsPayload = buildProductFlagsPayload(form);
-
     setCreating(true);
     let flagsError = "";
     let imageUploadError = "";
@@ -362,24 +363,70 @@ const AdminProductCreate = () => {
     try {
       if (isEditMode) {
         const id = editRouteProductId.trim();
-        const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, payload);
-        const updated = normalizeProductPayload(data);
-        const nextId = pickProductId(updated) || id;
-        savedProductId = String(nextId);
-        let mergedProduct = updated;
-        try {
-          mergedProduct = (await updateProductFlags(savedProductId, flagsPayload)) ?? mergedProduct;
-        } catch (flagErr) {
-          flagsError = getApiErrorMessage(flagErr, "Product saved but failed to update flags.");
+        const orig = originalFormRef.current;
+
+        const editPayload = {};
+        if (!orig || form.name.trim() !== (orig.name || "").trim()) editPayload.name = form.name.trim();
+        if (!orig || form.description.trim() !== (orig.description || "").trim()) editPayload.description = form.description.trim();
+        if (!orig || form.brand.trim() !== (orig.brand || "").trim()) editPayload.brand = form.brand.trim();
+        if (!orig || form.category !== (orig.category || "")) editPayload.category = form.category;
+        if (!orig || form.fabric !== (orig.fabric || "")) editPayload.fabric = form.fabric;
+        if (!orig || form.status !== (orig.status || "")) editPayload.status = form.status;
+        if (!orig || Number(form.regularPrice) !== Number(orig.regularPrice || 0)) editPayload.regularPrice = Number(form.regularPrice);
+        if (!orig || Number(form.discountPrice) !== Number(orig.discountPrice || 0)) editPayload.discountPrice = Number(form.discountPrice);
+        if (!orig || Number(form.taxPercent) !== Number(orig.taxPercent || 5)) editPayload.taxPercent = Number(form.taxPercent);
+
+        const origTagsStr = (orig?.tags || "").split(",").map((t) => t.trim()).filter(Boolean).join(",");
+        const newTagsStr = parsedTags.join(",");
+        if (!orig || newTagsStr !== origTagsStr) editPayload.tags = parsedTags;
+
+        const newMetaTitle = form.metaTitle.trim();
+        const newMetaDesc = form.metaDescription.trim();
+        const origMetaTitle = (orig?.metaTitle || "").trim();
+        const origMetaDesc = (orig?.metaDescription || "").trim();
+        if (!orig || newMetaTitle !== origMetaTitle || newMetaDesc !== origMetaDesc) {
+          editPayload.seo = { metaTitle: newMetaTitle, metaDescription: newMetaDesc };
         }
+
+        if (!orig || JSON.stringify(form.variants) !== JSON.stringify(orig.variants)) {
+          editPayload.variants = variants;
+        }
+
+        const origFlags = orig ? buildProductFlagsPayload(orig) : null;
+        const newFlags = buildProductFlagsPayload(form);
+        const flagsChanged = !origFlags || JSON.stringify(origFlags) !== JSON.stringify(newFlags);
+
+        if (Object.keys(editPayload).length === 0 && !flagsChanged && stagingSnapshot.length === 0) {
+          navigate(`/admin/products/${encodeURIComponent(id)}`);
+          return;
+        }
+
+        let mergedProduct = null;
+        savedProductId = id;
+
+        if (Object.keys(editPayload).length > 0) {
+          const { data } = await client.put(`/admin/products/${encodeURIComponent(id)}`, editPayload);
+          mergedProduct = normalizeProductPayload(data);
+          savedProductId = String(pickProductId(mergedProduct) || id);
+        }
+
+        if (flagsChanged) {
+          try {
+            const flagResult = await updateProductFlags(savedProductId, newFlags);
+            if (flagResult) mergedProduct = flagResult;
+          } catch (flagErr) {
+            flagsError = getApiErrorMessage(flagErr, "Product saved but failed to update flags.");
+          }
+        }
+
         setCreatedProductId(savedProductId);
-        setProductImages(normalizeProductImages(mergedProduct));
+        if (mergedProduct) setProductImages(normalizeProductImages(mergedProduct));
 
         if (savedProductId && stagingSnapshot.length > 0) {
           setUploadingImage(true);
           try {
             for (const row of stagingSnapshot) {
-              const order = normalizeProductImages(mergedProduct).length;
+              const order = mergedProduct ? normalizeProductImages(mergedProduct).length : productImages.length;
               mergedProduct = await uploadOneFileToProduct(savedProductId, row.file, order);
             }
             setProductImages(normalizeProductImages(mergedProduct));
@@ -391,6 +438,7 @@ const AdminProductCreate = () => {
           }
         }
       } else {
+        const flagsPayload = buildProductFlagsPayload(form);
         const { data } = await client.post("/admin/products", payload);
         const created = normalizeProductPayload(data);
         const id = pickProductId(created);

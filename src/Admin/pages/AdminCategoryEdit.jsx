@@ -83,6 +83,7 @@ const AdminCategoryEdit = () => {
   const [imageSuccess, setImageSuccess] = useState("");
   const [stagingFile, setStagingFile] = useState(null);
   const imageInputRef = useRef(null);
+  const originalFormRef = useRef(null);
 
   const onFormChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -107,7 +108,9 @@ const AdminCategoryEdit = () => {
       }
       setCategory(fetched);
       setAllCategories(flattenCategories(listData));
-      setForm(mapCategoryToForm(fetched));
+      const mappedForm = mapCategoryToForm(fetched);
+      setForm(mappedForm);
+      originalFormRef.current = mappedForm;
     } catch (err) {
       setError(getApiErrorMessage(err, "Failed to load category."));
     } finally {
@@ -188,28 +191,45 @@ const AdminCategoryEdit = () => {
     }
 
     const stagingSnapshot = stagingFile;
-    const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || undefined,
-      displayOrder: Number(form.displayOrder) || 0,
-      parent: form.parent || null,
-      isActive: Boolean(form.isActive),
-    };
-    const metaTitle = form.metaTitle.trim();
-    const metaDescription = form.metaDescription.trim();
-    if (metaTitle || metaDescription) {
+    const orig = originalFormRef.current;
+
+    const newName = form.name.trim();
+    const newDesc = form.description.trim();
+    const newParent = form.parent || null;
+    const newOrder = Number(form.displayOrder) || 0;
+    const newActive = Boolean(form.isActive);
+    const newMetaTitle = form.metaTitle.trim();
+    const newMetaDescription = form.metaDescription.trim();
+
+    const payload = {};
+    if (!orig || newName !== (orig.name || "").trim()) payload.name = newName;
+    if (!orig || newDesc !== (orig.description || "").trim()) payload.description = newDesc || undefined;
+    if (!orig || newParent !== (orig.parent || null)) payload.parent = newParent;
+    if (!orig || newOrder !== (Number(orig.displayOrder) || 0)) payload.displayOrder = newOrder;
+    if (!orig || newActive !== Boolean(orig.isActive)) payload.isActive = newActive;
+
+    const origMetaTitle = (orig?.metaTitle || "").trim();
+    const origMetaDescription = (orig?.metaDescription || "").trim();
+    if (newMetaTitle !== origMetaTitle || newMetaDescription !== origMetaDescription) {
       payload.seo = {};
-      if (metaTitle) payload.seo.metaTitle = metaTitle;
-      if (metaDescription) payload.seo.metaDescription = metaDescription;
+      if (newMetaTitle) payload.seo.metaTitle = newMetaTitle;
+      if (newMetaDescription) payload.seo.metaDescription = newMetaDescription;
+    }
+
+    if (Object.keys(payload).length === 0 && !stagingSnapshot) {
+      navigate(`/admin/categories/${encodeURIComponent(categoryId)}`);
+      return;
     }
 
     setSaving(true);
     let imageUploadError = "";
 
     try {
-      const { data } = await updateAdminCategory(categoryId, payload);
-      const updated = normalizeCategoryPayload(data) ?? category;
-      let mergedCategory = updated;
+      let mergedCategory = category;
+      if (Object.keys(payload).length > 0) {
+        const { data } = await updateAdminCategory(categoryId, payload);
+        mergedCategory = normalizeCategoryPayload(data) ?? category;
+      }
 
       if (categoryId && stagingSnapshot) {
         setUploadingImage(true);

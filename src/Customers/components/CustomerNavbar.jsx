@@ -3,7 +3,6 @@ import {
   Accordion,
   AccordionDetails,
   AccordionSummary,
-  alpha,
   AppBar,
   Badge,
   Box,
@@ -13,7 +12,6 @@ import {
   IconButton,
   List,
   ListItemButton,
-  ListItemIcon,
   ListItemText,
   Menu,
   MenuItem,
@@ -47,17 +45,6 @@ const announcementMessages = [
   "New arrivals · curated weekly",
   "Returns within 7 days · hassle-free",
 ];
-
-const wordmarkSx = {
-  fontFamily: fonts.display,
-  fontWeight: 500,
-  letterSpacing: { xs: "0.32em", sm: "0.38em" },
-  fontSize: { xs: 16, sm: 20 },
-  lineHeight: 1,
-  color: colors.ink,
-  textTransform: "uppercase",
-  whiteSpace: "nowrap",
-};
 
 const navLinkSx = {
   fontFamily: fonts.body,
@@ -93,6 +80,91 @@ const navLinkSx = {
 const getNodeChildren = (node) =>
   Array.isArray(node?.children) ? node.children : [];
 
+/* ─── Category Dropdown for desktop ─── */
+function CategoryDropdown({ node }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const slug = getPublicCategorySlug(node);
+  const name = getPublicCategoryName(node);
+  const children = getNodeChildren(node);
+  const hasChildren = children.length > 0;
+
+  if (!hasChildren) {
+    return (
+      <Button
+        component={slug ? RouterLink : "button"}
+        to={slug ? `/categories/${encodeURIComponent(slug)}` : undefined}
+        sx={navLinkSx}
+      >
+        {name}
+      </Button>
+    );
+  }
+
+  return (
+    <>
+      <Button
+        aria-haspopup="true"
+        aria-expanded={open ? "true" : undefined}
+        onMouseEnter={(e) => setAnchorEl(e.currentTarget)}
+        onMouseLeave={() => setAnchorEl(null)}
+        component={slug ? RouterLink : "button"}
+        to={slug ? `/categories/${encodeURIComponent(slug)}` : undefined}
+        endIcon={<MdExpandMore size={14} />}
+        sx={navLinkSx}
+      >
+        {name}
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={() => setAnchorEl(null)}
+        MenuListProps={{
+          onMouseLeave: () => setAnchorEl(null),
+          sx: { py: 0.5 },
+        }}
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            mt: 0,
+            borderRadius: 0,
+            border: `1px solid ${colors.line}`,
+            minWidth: 180,
+            bgcolor: colors.paper,
+          },
+        }}
+        transformOrigin={{ horizontal: "left", vertical: "top" }}
+        anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
+      >
+        {children.map((child) => {
+          const childSlug = getPublicCategorySlug(child);
+          const childName = getPublicCategoryName(child);
+          return (
+            <MenuItem
+              key={childSlug || childName}
+              component={childSlug ? RouterLink : "div"}
+              to={childSlug ? `/categories/${encodeURIComponent(childSlug)}` : undefined}
+              onClick={() => setAnchorEl(null)}
+              sx={{
+                fontFamily: fonts.body,
+                fontSize: 12,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: colors.ink,
+                py: 1,
+                "&:hover": { color: colors.wine, backgroundColor: colors.ivory },
+              }}
+            >
+              {childName}
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+}
+
+/* ─── Mobile category tree ─── */
 function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
   if (!Array.isArray(nodes) || nodes.length === 0) return null;
 
@@ -167,9 +239,7 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
                   {name}
                 </Typography>
               ) : (
-                <Typography
-                  sx={{ color: colors.ink, fontWeight: 500, fontSize: 14 }}
-                >
+                <Typography sx={{ color: colors.ink, fontWeight: 500, fontSize: 14 }}>
                   {name}
                 </Typography>
               )}
@@ -188,6 +258,7 @@ function MobileCategoryTree({ nodes = [], level = 0, onNodeClick }) {
   );
 }
 
+/* ─── Announcement bar ─── */
 const AnnouncementBar = () => {
   const [idx, setIdx] = useState(0);
 
@@ -236,13 +307,12 @@ const AnnouncementBar = () => {
   );
 };
 
+/* ─── Main Navbar ─── */
 const CustomerNavbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(() =>
-    Boolean(getStoredAccessToken())
-  );
+  const [loggedIn, setLoggedIn] = useState(() => Boolean(getStoredAccessToken()));
   const [loggingOut, setLoggingOut] = useState(false);
   const [categoryTree, setCategoryTree] = useState([]);
   const { cart } = useCart();
@@ -266,10 +336,7 @@ const CustomerNavbar = () => {
       .catch(() => {
         if (!cancelled) setCategoryTree([]);
       });
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   const handleDrawerToggle = () => setMobileOpen((open) => !open);
@@ -294,28 +361,21 @@ const CustomerNavbar = () => {
   const displayName = getStoredUserDisplayName();
   const showAdminEntry = role === "super_admin" || role === "manager";
 
+  /* ── Desktop left nav: HOME + top-level categories ── */
   const desktopNav = (
     <Stack
       direction="row"
       alignItems="center"
       spacing={0}
-      sx={{
-        display: { xs: "none", md: "flex" },
-        position: { md: "absolute" },
-        left: { md: "50%" },
-        transform: { md: "translateX(-50%)" },
-      }}
+      sx={{ display: { xs: "none", md: "flex" }, flexShrink: 0 }}
     >
       <Button component={RouterLink} to="/" sx={navLinkSx}>
         Home
       </Button>
-      <Button component={RouterLink} to="/products" sx={navLinkSx}>
-        Shop
-      </Button>
-      <Button component={RouterLink} to="/categories" sx={navLinkSx}>
-        Categories
-      </Button>
-      {showAdminEntry ? (
+      {categoryTree.map((node) => (
+        <CategoryDropdown key={getPublicCategorySlug(node) || getPublicCategoryName(node)} node={node} />
+      ))}
+      {showAdminEntry && (
         <Button
           component={RouterLink}
           to="/admin/dashboard"
@@ -323,22 +383,19 @@ const CustomerNavbar = () => {
         >
           Admin
         </Button>
-      ) : null}
+      )}
     </Stack>
   );
 
+  /* ── Desktop right actions ── */
   const desktopActions = (
     <Stack
       direction="row"
       alignItems="center"
       spacing={0.5}
-      sx={{
-        display: { xs: "none", md: "flex" },
-        ml: "auto",
-        flexShrink: 0,
-      }}
+      sx={{ display: { xs: "none", md: "flex" }, flexShrink: 0 }}
     >
-      {loggedIn ? (
+      {loggedIn && (
         <IconButton
           component={RouterLink}
           to="/wishlist"
@@ -350,7 +407,7 @@ const CustomerNavbar = () => {
             <FiHeart size={20} />
           </Badge>
         </IconButton>
-      ) : null}
+      )}
       {loggedIn ? (
         <IconButton
           component={RouterLink}
@@ -362,11 +419,7 @@ const CustomerNavbar = () => {
           <FiUser size={20} />
         </IconButton>
       ) : (
-        <Button
-          component={RouterLink}
-          to="/login"
-          sx={{ ...navLinkSx, px: 1.25 }}
-        >
+        <Button component={RouterLink} to="/login" sx={{ ...navLinkSx, px: 1.25 }}>
           Sign in
         </Button>
       )}
@@ -381,7 +434,7 @@ const CustomerNavbar = () => {
           <FiShoppingBag size={20} />
         </Badge>
       </IconButton>
-      {loggedIn ? (
+      {loggedIn && (
         <Button
           variant="text"
           onClick={handleLogout}
@@ -390,10 +443,11 @@ const CustomerNavbar = () => {
         >
           {loggingOut ? "Signing out…" : "Sign out"}
         </Button>
-      ) : null}
+      )}
     </Stack>
   );
 
+  /* ── Mobile drawer ── */
   const drawer = (
     <Box sx={{ pt: 2, pb: 3, bgcolor: colors.paper, height: "100%" }} role="presentation">
       <Stack
@@ -402,9 +456,19 @@ const CustomerNavbar = () => {
         justifyContent="space-between"
         sx={{ px: 2.5, pb: 2 }}
       >
-        <Typography sx={{ ...wordmarkSx, fontSize: 14 }}>
-          Shree Gallery
-        </Typography>
+        <Box
+          component={RouterLink}
+          to="/"
+          onClick={closeDrawer}
+          sx={{ display: "flex", alignItems: "center", textDecoration: "none" }}
+        >
+          <Box
+            component="img"
+            src="/shreelogo.png"
+            alt="Shree Gallery"
+            sx={{ height: 36, width: "auto", objectFit: "contain" }}
+          />
+        </Box>
         <IconButton onClick={closeDrawer} aria-label="Close menu" size="small">
           <FiX size={20} />
         </IconButton>
@@ -433,35 +497,29 @@ const CustomerNavbar = () => {
         <ListItemButton component={RouterLink} to="/" onClick={closeDrawer}>
           <ListItemText primary="Home" />
         </ListItemButton>
-        <ListItemButton component={RouterLink} to="/products" onClick={closeDrawer}>
-          <ListItemText primary="Shop" />
-        </ListItemButton>
-        <ListItemButton component={RouterLink} to="/categories" onClick={closeDrawer}>
-          <ListItemText primary="Categories" />
-        </ListItemButton>
         <ListItemButton component={RouterLink} to="/cart" onClick={closeDrawer}>
           <ListItemText primary={`Cart (${cart?.itemCount || 0})`} />
         </ListItemButton>
-        {loggedIn ? (
+        {loggedIn && (
           <ListItemButton component={RouterLink} to="/wishlist" onClick={closeDrawer}>
             <ListItemText primary={`Wishlist (${wishlist?.total || 0})`} />
           </ListItemButton>
-        ) : null}
-        {loggedIn ? (
+        )}
+        {loggedIn && (
           <ListItemButton component={RouterLink} to="/orders" onClick={closeDrawer}>
             <ListItemText primary="Orders" />
           </ListItemButton>
-        ) : null}
-        {loggedIn ? (
+        )}
+        {loggedIn && (
           <ListItemButton component={RouterLink} to="/profile" onClick={closeDrawer}>
             <ListItemText primary="Profile" />
           </ListItemButton>
-        ) : null}
-        {showAdminEntry ? (
+        )}
+        {showAdminEntry && (
           <ListItemButton component={RouterLink} to="/admin/dashboard" onClick={closeDrawer}>
             <ListItemText primary="Admin" />
           </ListItemButton>
-        ) : null}
+        )}
         {!loggedIn ? (
           <>
             <ListItemButton component={RouterLink} to="/login" onClick={closeDrawer}>
@@ -497,54 +555,20 @@ const CustomerNavbar = () => {
         {categoryTree.length > 0 ? (
           <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
         ) : (
-          <Typography
-            sx={{ fontSize: 13, color: colors.muted, py: 0.6 }}
-          >
+          <Typography sx={{ fontSize: 13, color: colors.muted, py: 0.6 }}>
             Categories will appear here soon.
           </Typography>
         )}
-        <Accordion
-          disableGutters
-          elevation={0}
-          defaultExpanded
-          sx={{
-            bgcolor: "transparent",
-            boxShadow: "none",
-            "&::before": { display: "none" },
-          }}
-        >
-          <AccordionSummary
-            expandIcon={<MdExpandMore size={20} />}
-            sx={{
-              px: 0.25,
-              minHeight: 44,
-              "& .MuiAccordionSummary-content": { my: 0.5 },
-            }}
-          >
-            <Typography sx={{ fontWeight: 700, fontSize: 14, color: alpha(colors.text, 0.85) }}>
-              Categories
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails sx={{ pt: 0, pb: 0.5, px: 0 }}>
-            {categoryTree.length > 0 ? (
-              <MobileCategoryTree nodes={categoryTree} onNodeClick={closeDrawer} />
-            ) : (
-              <Typography sx={{ fontSize: 13, color: alpha(colors.text, 0.55), py: 0.6 }}>
-                Categories will appear here soon.
-              </Typography>
-            )}
-          </AccordionDetails>
-        </Accordion>
       </Box>
 
-      {loggedIn && displayName ? (
+      {loggedIn && displayName && (
         <>
           <Divider sx={{ my: 2, mx: 2.5, borderColor: colors.line }} />
           <Typography sx={{ px: 2.5, fontSize: 13, color: colors.muted }}>
             Signed in as <strong style={{ color: colors.ink }}>{displayName}</strong>
           </Typography>
         </>
-      ) : null}
+      )}
     </Box>
   );
 
@@ -556,9 +580,7 @@ const CustomerNavbar = () => {
         elevation={0}
         sx={{
           bgcolor: colors.ivory,
-          backdropFilter: "saturate(180%) blur(8px)",
-          backgroundColor: inkAlpha(0.0),
-          background: `${colors.ivory}`,
+          background: colors.ivory,
           borderBottom: `1px solid ${colors.line}`,
           color: colors.ink,
           top: 0,
@@ -571,48 +593,82 @@ const CustomerNavbar = () => {
             mx: "auto",
             px: { xs: 2, sm: 3 },
             minHeight: { xs: 56, sm: 72 },
-            gap: 1,
             position: "relative",
+            display: "flex",
+            alignItems: "center",
           }}
         >
+          {/* Mobile hamburger */}
           <IconButton
             color="inherit"
             aria-label="Open navigation menu"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{
-              display: { md: "none" },
-              mr: 0.5,
-              color: colors.ink,
-            }}
+            sx={{ display: { md: "none" }, mr: 0.5, color: colors.ink }}
           >
             <FiMenu size={22} />
           </IconButton>
 
+          {/* Desktop: Left nav links (HOME + categories) */}
+          {desktopNav}
+
+          {/* Centered logo — absolute so it doesn't affect flex layout */}
           <Box
             component={RouterLink}
             to="/"
             sx={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
               display: "flex",
               alignItems: "center",
               textDecoration: "none",
-              color: "inherit",
-              minWidth: 0,
-              mr: { md: 0 },
+              pointerEvents: "auto",
             }}
           >
-            <Typography component="span" sx={wordmarkSx}>
-              Shree Gallery
-            </Typography>
+            <Box
+              component="img"
+              src="/shreelogo.png"
+              alt="Shree Gallery"
+              sx={{
+                height: { xs: 40, sm: 52 },
+                width: "auto",
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
           </Box>
 
-          {desktopNav}
+          {/* Mobile: logo (left of center) */}
+          <Box
+            component={RouterLink}
+            to="/"
+            sx={{
+              display: { xs: "flex", md: "none" },
+              alignItems: "center",
+              textDecoration: "none",
+              mx: "auto",
+            }}
+          >
+            <Box
+              component="img"
+              src="/shreelogo.png"
+              alt="Shree Gallery"
+              sx={{ height: 36, width: "auto", objectFit: "contain" }}
+            />
+          </Box>
 
+          {/* Desktop right actions */}
+          <Box sx={{ display: { xs: "none", md: "flex" }, ml: "auto" }}>
+            {desktopActions}
+          </Box>
+
+          {/* Mobile right icons */}
           <Stack
             direction="row"
             alignItems="center"
             spacing={0}
-            sx={{ display: { xs: "flex", md: "none" }, ml: "auto" }}
+            sx={{ display: { xs: "flex", md: "none" }, flexShrink: 0 }}
           >
             <IconButton
               component={RouterLink}
@@ -621,38 +677,20 @@ const CustomerNavbar = () => {
               size="small"
               sx={{ color: colors.ink }}
             >
-              <Badge
-                color="secondary"
-                badgeContent={cart?.itemCount || 0}
-                max={99}
-              >
+              <Badge color="secondary" badgeContent={cart?.itemCount || 0} max={99}>
                 <FiShoppingBag size={20} />
               </Badge>
             </IconButton>
-            {loggedIn ? (
-              <IconButton
-                component={RouterLink}
-                to="/profile"
-                aria-label="Account"
-                size="small"
-                sx={{ color: colors.ink }}
-              >
-                <FiUser size={20} />
-              </IconButton>
-            ) : (
-              <IconButton
-                component={RouterLink}
-                to="/login"
-                aria-label="Sign in"
-                size="small"
-                sx={{ color: colors.ink }}
-              >
-                <FiUser size={20} />
-              </IconButton>
-            )}
+            <IconButton
+              component={RouterLink}
+              to={loggedIn ? "/profile" : "/login"}
+              aria-label={loggedIn ? "Account" : "Sign in"}
+              size="small"
+              sx={{ color: colors.ink }}
+            >
+              <FiUser size={20} />
+            </IconButton>
           </Stack>
-
-          {desktopActions}
         </Toolbar>
       </AppBar>
 
@@ -673,7 +711,6 @@ const CustomerNavbar = () => {
       >
         {drawer}
       </Drawer>
-
     </>
   );
 };
