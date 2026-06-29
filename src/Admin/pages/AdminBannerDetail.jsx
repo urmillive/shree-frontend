@@ -261,14 +261,24 @@ const AdminBannerDetail = () => {
               <Typography sx={{ color: "#6f7f77", fontWeight: 600, fontSize: 13 }}>
                 Status: {statusLabel} | Placement: {placementLabel}
               </Typography>
-              <Button
-                variant="contained"
-                onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/edit`)}
-                disabled={!id}
-                sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
-              >
-                Edit Banner
-              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="outlined"
+                  onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/images`)}
+                  disabled={!id}
+                  sx={{ textTransform: "none", fontWeight: 700, color: accent, borderColor: alpha(accent, 0.45) }}
+                >
+                  Manage Images
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/edit`)}
+                  disabled={!id}
+                  sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
+                >
+                  Edit Banner
+                </Button>
+              </Stack>
             </Stack>
 
             <Tabs
@@ -408,15 +418,15 @@ const AdminBannerDetail = () => {
                   >
                     <Typography sx={{ fontWeight: 700, color: "#19271f", mb: 0.5 }}>No images yet</Typography>
                     <Typography variant="body2" sx={{ color: "#6f7f77", mb: 2 }}>
-                      Upload desktop and mobile banner images from Edit Banner.
+                      Upload desktop and mobile banner images from Manage Images.
                     </Typography>
                     <Button
                       variant="contained"
-                      onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/edit`)}
+                      onClick={() => id && navigate(`/admin/homepage-cms/${encodeURIComponent(id)}/images`)}
                       disabled={!id}
                       sx={{ textTransform: "none", fontWeight: 700, bgcolor: accent, "&:hover": { bgcolor: "#8f723c" } }}
                     >
-                      Edit Banner
+                      Manage Images
                     </Button>
                   </Box>
                 )}

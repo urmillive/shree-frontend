@@ -249,7 +249,7 @@ const Login = () => {
           }}
         >
           <Typography sx={{ color: colors.muted, fontSize: 13.5, mb: 1.5 }}>
-            New to Shree Gallery?
+            New to Shree Gallary?
           </Typography>
           <Button
             component={RouterLink}

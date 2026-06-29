@@ -1,5 +1,5 @@
 /**
- * Shree Gallery — editorial-luxury design tokens.
+ * Shree Gallary — editorial-luxury design tokens.
  *
  * Only customer-facing pages and components import from this file.
  * Admin pages do not import from theme/* and use MUI defaults via

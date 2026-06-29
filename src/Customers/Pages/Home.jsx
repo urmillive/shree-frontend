@@ -10,7 +10,7 @@ const pillars = [
   {
     label: "Considered Craft",
     body:
-      "Every piece is made in small runs with artisans who care. No fast-fashion shortcuts.",
+      "Jewellery, imitation pieces, and clothing chosen with care — quality you can trust, every time.",
   },
   {
     label: "Free Shipping",
@@ -58,13 +58,13 @@ const Home = () => {
               maxWidth: 720,
             }}
           >
-            A wardrobe of pieces you'll return to —
+            Pieces you'll return to —
             <Box
               component="span"
               sx={{ fontStyle: "italic", color: colors.wine }}
             >
               {" "}
-              season after season.
+              occasion after occasion.
             </Box>
           </Typography>
           <Typography
@@ -76,8 +76,8 @@ const Home = () => {
               lineHeight: 1.75,
             }}
           >
-            Modern Indian fashion, made in considered runs. Discover the latest
-            arrivals from our atelier.
+            Fine and imitation jewellery, clothing, and more — curated for
+            every occasion. Discover the latest arrivals.
           </Typography>
           <Box
             component={RouterLink}
