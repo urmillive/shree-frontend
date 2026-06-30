@@ -11,7 +11,6 @@ import {
 import { Link as RouterLink } from "react-router-dom";
 import { FiInstagram, FiTwitter } from "react-icons/fi";
 import { colors, fonts } from "../../theme/theme";
-import logoMark from "../../assets/logo-mark.svg";
 
 const linkSx = {
   color: colors.muted,
@@ -33,16 +32,6 @@ const columnLabelSx = {
   fontWeight: 500,
   color: colors.ink,
   mb: 2,
-};
-
-const wordmarkSx = {
-  fontFamily: fonts.display,
-  fontWeight: 500,
-  letterSpacing: "0.34em",
-  fontSize: 22,
-  color: colors.ink,
-  textTransform: "uppercase",
-  lineHeight: 1,
 };
 
 const CustomerFooter = () => {
@@ -69,18 +58,12 @@ const CustomerFooter = () => {
           sx={{ pb: { xs: 5, sm: 7 } }}
         >
           <Grid size={{ xs: 12, md: 6 }}>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <Box
-                component="img"
-                src={logoMark}
-                alt=""
-                aria-hidden="true"
-                sx={{ height: 34, width: "auto", display: "block", mr: 1.25 }}
-              />
-              <Typography component="div" sx={wordmarkSx}>
-                Shree Gallary
-              </Typography>
-            </Box>
+            <Box
+              component="img"
+              src="/shreelogo.png"
+              alt="Shree Gallary"
+              sx={{ height: 48, width: "auto", objectFit: "contain", display: "block" }}
+            />
             <Typography
               sx={{
                 mt: 2.5,
