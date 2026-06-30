@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { Link as RouterLink, useLocation, useNavigate } from "react-router-dom";
-import logo from "../../assets/logo.svg";
 import {
   Alert,
   Box,
@@ -136,9 +135,9 @@ const Login = () => {
           >
             <Box
               component="img"
-              src={logo}
+              src="/shreelogo.png"
               alt="Shree Gallary"
-              sx={{ height: { xs: 52, sm: 58 }, width: "auto", maxWidth: "100%", mx: "auto", display: "block" }}
+              sx={{ height: { xs: 64, sm: 76 }, width: "auto", maxWidth: "100%", objectFit: "contain", mx: "auto", display: "block" }}
             />
           </Box>
           <Typography sx={eyebrowSx}>Welcome back</Typography>
