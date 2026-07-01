@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { colors, fonts } from "../../theme/theme";
+import { colors, fonts, ease } from "../../theme/theme";
 import {
   resolveProductImage,
   resolveProductName,
@@ -96,10 +96,73 @@ export default function ProductCard({ product, priceColor, imageRadius }) {
           </Box>
         )}
 
-      
+        {flag ? (
+          <Box
+            sx={{
+              position: "absolute",
+              top: 10,
+              left: 10,
+              px: 1,
+              py: 0.4,
+              bgcolor: colors.paper,
+              color: colors.wine,
+              fontFamily: fonts.body,
+              fontSize: 9.5,
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              fontWeight: 600,
+            }}
+          >
+            {flag}
+          </Box>
+        ) : null}
       </Box>
 
-     
+      <Stack spacing={0.4}>
+        {category ? (
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 10.5,
+              letterSpacing: "0.16em",
+              textTransform: "uppercase",
+              color: colors.muted,
+            }}
+          >
+            {category}
+          </Typography>
+        ) : null}
+        <Typography
+          className="sg-card-name"
+          sx={{
+            fontFamily: fonts.display,
+            fontSize: { xs: 16, sm: 17 },
+            fontWeight: 500,
+            lineHeight: 1.25,
+            color: colors.ink,
+            transition: `color 200ms ${ease}`,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {name}
+        </Typography>
+        {price > 0 ? (
+          <Typography
+            sx={{
+              fontFamily: fonts.body,
+              fontSize: 13.5,
+              fontWeight: 500,
+              letterSpacing: "0.02em",
+              color: priceColor || colors.wine,
+            }}
+          >
+            {INR.format(price)}
+          </Typography>
+        ) : null}
+      </Stack>
     </Box>
   );
 }
